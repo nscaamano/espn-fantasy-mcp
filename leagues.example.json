@@ -1,0 +1,28 @@
+{
+  "leagues": [
+    {
+      "alias": "ppr",
+      "name": "My PPR league",
+      "leagueId": 0,
+      "year": 2026,
+      "myTeamId": 0,
+      "rules": {}
+    },
+    {
+      "alias": "superflex",
+      "name": "My superflex league",
+      "leagueId": 0,
+      "year": 2026,
+      "myTeamId": 0,
+      "rules": {}
+    },
+    {
+      "alias": "half-ppr",
+      "name": "My half-PPR league",
+      "leagueId": 0,
+      "year": 2026,
+      "myTeamId": 0,
+      "rules": {}
+    }
+  ]
+}

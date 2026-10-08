@@ -1,0 +1,28 @@
+{
+  "name": "espn-fantasy-mcp",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.8.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "tsc -b && tsc -p scripts && tsc -p packages/espn-client/test && tsc -p packages/core/test",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "smoke": "pnpm build && node --env-file-if-exists=.env scripts/smoke.ts"
+  },
+  "devDependencies": {
+    "@espn-fantasy-mcp/core": "workspace:*",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.1",
+    "eslint": "^10.12.0",
+    "prettier": "^3.9.9",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^5.0.3"
+  }
+}

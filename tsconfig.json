@@ -1,0 +1,4 @@
+{
+  "files": [],
+  "references": [{ "path": "packages/espn-client" }, { "path": "packages/core" }]
+}

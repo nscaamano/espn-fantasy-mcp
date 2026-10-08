@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Secrets and personal config
+.env
+.env.*
+!.env.example
+leagues.json
+
+# Windows download markers (WSL)
+*:Zone.Identifier

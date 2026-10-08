@@ -1,0 +1,23 @@
+{
+  "name": "@espn-fantasy-mcp/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@espn-fantasy-mcp/espn-client": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}
