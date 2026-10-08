@@ -195,6 +195,15 @@ export const LeagueSettings = z.object({
 });
 export type LeagueSettings = z.infer<typeof LeagueSettings>;
 
+/** The schema a stored value for `rule` must match: LeagueSettings at that path, not null. */
+export function ruleValueSchema(rule: RuleKey): z.ZodType {
+  let schema: z.ZodType = LeagueSettings;
+  for (const part of rule.split(".")) {
+    schema = (schema as z.ZodObject).shape[part]!;
+  }
+  return schema instanceof z.ZodNullable ? (schema.unwrap() as z.ZodType) : schema;
+}
+
 export const MatchupSide = z.object({
   teamId: z.number().int(),
   teamName: z.string(),

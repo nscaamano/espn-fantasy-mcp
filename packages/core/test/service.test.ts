@@ -147,6 +147,30 @@ describe("FantasyService", () => {
     expect(s.waivers.type).toBe("FAAB");
     expect(s.conflicts).toHaveLength(1);
   });
+
+  it("rejects a rule value that doesn't fit the settings schema, without saving it", () => {
+    const dir = mkdtempSync(join(tmpdir(), "espn-fantasy-mcp-"));
+    const path = join(dir, "leagues.json");
+    writeFileSync(path, JSON.stringify(config()));
+    const { fetch } = fixtureFetch();
+    const svc = new FantasyService(new EspnClient({ fetch }), loadConfig(path), {
+      configPath: path,
+    });
+
+    expect(() => svc.setLeagueRule("test", "waivers.type", "faab", "user")).toThrow(
+      /Invalid value for waivers.type/,
+    );
+    expect(() => svc.setLeagueRule("test", "waivers.faabBudget", null, "user")).toThrow(
+      /Invalid value/,
+    );
+    expect(svc.setLeagueRule("test", "roster.slots", { QB: 1, OP: 1 }, "upload")).toMatchObject({
+      value: { QB: 1, OP: 1 },
+      source: "upload",
+    });
+    expect(Object.keys(JSON.parse(readFileSync(path, "utf8")).leagues[0].rules)).toEqual([
+      "roster.slots",
+    ]);
+  });
 });
 
 describe("loadConfig", () => {

@@ -3,6 +3,7 @@
 // in the skills.
 
 import { EspnClient, type EspnLeagueSettings } from "@espn-fantasy-mcp/espn-client";
+import { z } from "zod";
 import {
   findConfigPath,
   findLeague,
@@ -10,6 +11,7 @@ import {
   saveConfig,
   type LeagueConfig,
   type LeaguesConfig,
+  type StoredRule,
 } from "./config.js";
 import { splitLineup, toFreeAgent, toLeagueSettings, toTransaction, type ByeWeeks } from "./map.js";
 import { applyRules } from "./rules.js";
@@ -21,6 +23,7 @@ import {
   Roster,
   RuleKey,
   Transaction,
+  ruleValueSchema,
   type MatchupSide,
   type RuleSource,
 } from "./schemas.js";
@@ -51,8 +54,10 @@ export class FantasyService {
   }
 
   /** Cookies from ESPN_S2/SWID, leagues from LEAGUES_CONFIG or the nearest leagues.json. */
-  static fromEnv(env: NodeJS.ProcessEnv = process.env): FantasyService {
-    const configPath = findConfigPath(process.cwd(), env);
+  static fromEnv(
+    env: NodeJS.ProcessEnv = process.env,
+    configPath = findConfigPath(process.cwd(), env),
+  ): FantasyService {
     return new FantasyService(EspnClient.fromEnv(env), loadConfig(configPath), { configPath });
   }
 
@@ -200,15 +205,22 @@ export class FantasyService {
     rule: RuleKey,
     value: unknown,
     source: Exclude<RuleSource, "espn">,
-  ): void {
+  ): StoredRule {
     const cfg = findLeague(this.config, league);
-    cfg.rules[RuleKey.parse(rule)] = {
-      value,
+    const key = RuleKey.parse(rule);
+    const parsed = ruleValueSchema(key).safeParse(value);
+    if (!parsed.success) {
+      throw new Error(`Invalid value for ${key}:\n${z.prettifyError(parsed.error)}`);
+    }
+    if (!this.options.configPath) throw new Error("No configPath set; can't save leagues.json");
+    const stored: StoredRule = {
+      value: parsed.data,
       source,
       confirmed: this.now().toISOString().slice(0, 10),
     };
-    if (!this.options.configPath) throw new Error("No configPath set; can't save leagues.json");
+    cfg.rules[key] = stored;
     saveConfig(this.config, this.options.configPath);
+    return stored;
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
