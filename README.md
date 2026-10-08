@@ -78,4 +78,4 @@ Not affiliated with or endorsed by ESPN. This uses ESPN's private, undocumented 
 
 ## License
 
-[MIT](LICENSE). Includes constants and test fixtures derived from [espn-api](https://github.com/cwendt94/espn-api) (MIT, © 2019 Christian Wendt).
+[MIT](LICENSE). Includes constants and test fixtures derived from [espn-api](https://github.com/cwendt94/espn-api); see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
