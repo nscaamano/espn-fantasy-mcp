@@ -4,10 +4,10 @@ This is the source of truth for what the service does and how the next pieces (t
 
 ## Goal and scope
 
-A read-only TypeScript service that pulls a user's ESPN fantasy football data, so Claude can check rosters, matchups and free agents directly instead of working from pasted screenshots.
+A read-only TypeScript service that pulls a user's ESPN fantasy football data, so an AI assistant can check rosters, matchups and free agents directly instead of working from pasted screenshots. It's exposed over MCP, so it works with any MCP client. Claude Code is the primary client it's developed against.
 
 - **Read-only.** Claude recommends lineup changes, waiver claims, FAAB bids and drops; the user makes the moves in the ESPN app. ESPN's write endpoints are thin and unofficial, and the user wants to press the final button themselves.
-- **Injury and news research** stays with Claude's web search. The service supplies ESPN data only.
+- **Injury and news research** stays with the assistant's own web search. The service supplies ESPN data only.
 - **Multiple leagues with different rules.** The reference setup is three leagues: full PPR with priority waivers; superflex (an OP slot, no D/ST or K) with FAAB; and half-PPR with D/ST and K, also FAAB. Nothing may assume one league's rules apply to another.
 
 ## Architecture
@@ -108,12 +108,26 @@ All tools are read-only toward ESPN. `league` accepts an alias from `leagues.jso
 | `set_league_rule` | league, rule, value, source | persist a rule confirmed by upload or answer (writes `leagues.json` only) |
 
 - **Output:** compact JSON, never ESPN's raw payload, so each call costs few tokens.
-- **Runs locally** from Claude Code or the Claude desktop app as a stdio server; ESPN cookies stay on the user's machine.
-- **Register** in `.mcp.json` at the repo root, with cookies read from `.env`.
+- **Runs locally** as a stdio server; ESPN cookies stay on the user's machine.
+
+### Client compatibility
+
+The server targets any MCP client, not just Claude: Claude Code, Claude Desktop, Cursor, VS Code, Codex CLI, Gemini CLI and others. That means:
+
+- **Spec-only features.** Use only tools (and prompts, below). Nothing should depend on a particular client's extensions.
+- **Structured output plus text.** Return `structuredContent` (validated against the output schema) and the same JSON as a text content block, since some clients only read text.
+- **Self-contained descriptions.** Tool and parameter descriptions must make sense to any model. For example, the `league` description should say where valid aliases come from: `list_leagues`.
+- **The server loads its own secrets.** It reads `.env` and `leagues.json` itself, found by walking up from its own location or via `LEAGUES_CONFIG`. Client configs then contain only the launch command, never cookies, and stay identical across clients: `node <repo>/apps/mcp/dist/index.js`.
+- **Config examples.** Ship `.mcp.json` for Claude Code at the repo root, and document the equivalent snippets for Claude Desktop, Cursor (`.cursor/mcp.json`) and VS Code (`.vscode/mcp.json`) in the README.
+- **Test with the MCP Inspector** (`npx @modelcontextprotocol/inspector`) as well as Claude Code.
 
 ## Skills (step 4)
 
-`SKILL.md` files in `skills/`. They hold the judgment; the MCP tools only fetch data. Output is a short per-league list of moves for the user to make in the app.
+They hold the judgment; the MCP tools only fetch data. Output is a short per-league list of moves for the user to make in the app.
+
+- **Primary form:** `SKILL.md` files in `skills/` (the Agent Skills format), used by Claude Code and other clients that support skills.
+- **Portable form:** the same workflows exposed as MCP **prompts** (`weekly_check`, `waivers`), so any client that supports MCP prompts gets them too. Write each workflow once and generate both forms from it, so they can't drift apart.
+- **Injury news** needs the client's own web search. Where a client has none, the workflow says so and falls back to ESPN injury tags, labeled as such.
 
 **weekly-check:** run before each week's first game, and again on Saturday.
 

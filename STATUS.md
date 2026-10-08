@@ -17,9 +17,9 @@ Last updated: 2026-10-07 · Design and specs: [docs/design.md](docs/design.md)
 - [ ] **Step 3: MCP server** (`apps/mcp`): `McpServer` over stdio with `registerTool` and the core zod schemas as output schemas.
   - Tools: `list_leagues`, `get_league_settings`, `get_my_roster`, `get_matchup`, `get_free_agents`, `get_recent_activity`.
   - Also `set_league_rule`, which persists rules the user confirms by uploading a settings page or answering a question.
-  - Register it in `.mcp.json`, with cookies from `.env`.
-  - Done when "show my superflex roster" in Claude Code returns the right starters and bench.
-- [ ] **Step 4: Skills** in `skills/`: `weekly-check` and `waivers`.
+  - Client-agnostic: the server loads `.env` and `leagues.json` itself, and returns structured output plus text. Ship `.mcp.json`, and document config snippets for other clients in the README (see the design doc's client compatibility section).
+  - Done when "show my superflex roster" in Claude Code returns the right starters and bench, and the tools also work in the MCP Inspector.
+- [ ] **Step 4: Skills:** `weekly-check` and `waivers`, as `SKILL.md` files and as MCP prompts for clients without skills.
   - Bake in these rules of thumb: Tuesday injury tags are stale; lineups lock per player; start the safe lineup; Monday-night backups; every claim needs a drop; IR moves; bye stacking; FAAB discipline; superflex QBs.
   - Done when one real Tuesday waiver run and one Saturday lineup check produce moves the user would actually make.
 - [ ] **Step 5:** use it for 2–3 weeks and note what's missing.

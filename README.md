@@ -1,6 +1,6 @@
 # espn-fantasy-mcp
 
-A read-only ESPN fantasy football service for Claude. It reads your rosters, matchups, free agents, league settings and league activity from ESPN's fantasy API, so Claude can give lineup and waiver advice without screenshots. It never makes moves: you make them in the ESPN app.
+A read-only [MCP](https://modelcontextprotocol.io) server and TypeScript client for ESPN fantasy football. It reads your rosters, matchups, free agents, league settings and league activity from ESPN's fantasy API, so any MCP-enabled assistant can give lineup and waiver advice without screenshots: Claude Code, Claude Desktop, Cursor, VS Code, Codex CLI, Gemini CLI and others. It never makes moves; you make them in the ESPN app.
 
 > **Status:** the ESPN client and core library work and have been checked against live 2026 leagues. The MCP server is next. See [STATUS.md](STATUS.md) for progress and [docs/design.md](docs/design.md) for the design.
 

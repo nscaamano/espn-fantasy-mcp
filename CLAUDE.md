@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Read-only ESPN fantasy football service. Claude reads rosters, matchups, free agents and league activity through it, recommends moves, and the user makes them in the ESPN app.
+Read-only ESPN fantasy football service, exposed as an MCP server that should work with any MCP client (Claude Code is the primary one). The assistant reads rosters, matchups, free agents and league activity through it and recommends moves; the user makes them in the ESPN app.
 
 **Start here:**
 - `docs/design.md` is the source of truth for scope, architecture, the MCP tool list, skill specs and the trades design.
