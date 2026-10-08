@@ -23,7 +23,13 @@ apps/
 skills/          weekly-check, waivers, trades SKILL.md files (step 4+)
 ```
 
-- **Why TypeScript rather than wrapping the Python espn-api:** one language and shared types end to end, with no Python sidecar. espn-api stays the reference for endpoints, `view` params, headers and ID mappings: port its request shapes, don't reinvent them. If maintaining the TS client ever proves painful, the fallback is a Python sidecar running espn-api.
+- **Why TypeScript rather than wrapping the Python espn-api:**
+  - Other TypeScript apps can import `core` and `espn-client` from npm and call the same `FantasyService`, so ESPN logic lives in one place rather than being reimplemented per app or per language.
+  - The official TypeScript MCP SDK gets new spec features first, and `npx <package>` is the most common way MCP client configs launch a server.
+  - The client is already ported from espn-api and verified against live leagues.
+
+  espn-api stays the reference for endpoints, `view` params, headers and ID mappings: port its request shapes, don't reinvent them. If maintaining the TS client ever proves painful, the fallback is a Python sidecar running espn-api.
+- **Packages stay split** so a consumer can depend on `core` (or just `espn-client`) without pulling in the MCP SDK. All three are meant to be published to npm: `espn-client` and `core` as libraries, and the MCP server with a `bin` for `npx`.
 - **Tooling:** pnpm workspaces only; no Nx or Turborepo at this size.
 
 | Layer | Choice |

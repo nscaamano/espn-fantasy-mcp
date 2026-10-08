@@ -30,6 +30,9 @@ Last updated: 2026-10-07 · Design and specs: [docs/design.md](docs/design.md)
   - Fix mode fills my hole from another team's surplus.
   - Opportunity mode covers consolidation, buy-low and sell-high.
   - Every proposal gets a fairness check.
+- [ ] **Publish to npm.** Publish `espn-client` and `core` as libraries, so other apps can depend on them. Publish the MCP server with a `bin`, so MCP clients can launch it with `npx`.
+  - Needs an owned npm scope: create the `@espn-fantasy-mcp` org, or rename the packages to `@nscaamano/*`.
+  - Do it once the MCP server works (after step 3).
 
 ## Open questions
 
@@ -47,4 +50,3 @@ Last updated: 2026-10-07 · Design and specs: [docs/design.md](docs/design.md)
 - **Pre-lock alerts.** A scheduled check (Claude Code routines or a cron) that pings when a starter turns OUT before kickoff.
 - **Remote MCP** so Claude mobile can reach it. It would need auth, since the server holds ESPN cookies.
 - **Other platforms** (Sleeper, Yahoo) as more clients behind the same core contract.
-- **Publish packages to npm** so other projects can depend on `espn-client` and `core`.
