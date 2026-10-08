@@ -19,7 +19,7 @@ packages/
   espn-client/   thin ESPN client (fetch + cookies), raw → typed
   core/          zod schemas + domain functions + league rules
 apps/
-  mcp/           McpServer (stdio): tools over core          (step 3)
+  mcp/           McpServer (stdio): tools over core
 skills/          weekly-check, waivers, trades SKILL.md files (step 4+)
 ```
 
@@ -37,7 +37,7 @@ skills/          weekly-check, waivers, trades SKILL.md files (step 4+)
 | Language | TypeScript, `strict` (pinned to 6.0 until typescript-eslint supports 7) |
 | Runtime | Node.js 24 LTS |
 | Validation / types | zod v4: schemas in `core`, types inferred from them |
-| MCP | `@modelcontextprotocol/sdk`: `McpServer` + `registerTool`, stdio |
+| MCP | `@modelcontextprotocol/server` (SDK v2): `McpServer` + `registerTool`, stdio |
 | ESPN access | own `espn-client` on native `fetch` |
 | Testing | Vitest unit tests on parsers, plus the live `smoke` script |
 | Lint / format | ESLint + Prettier |
@@ -97,9 +97,9 @@ Every recommendation depends on the league's rules, so the service learns them p
 - **Re-check** at the start of each season, and whenever ESPN disagrees with a stored value (`conflicts` in the output).
 - **Skills read rules first.** Every skill calls `get_league_settings` before anything else and never assumes a default (for example, never suggests FAAB bids in a priority-waiver league).
 
-## MCP server (step 3)
+## MCP server
 
-Use `McpServer` from `@modelcontextprotocol/sdk/server/mcp.js` with `registerTool` and the core zod schemas, over stdio. The low-level `Server` also works, but it means hand-writing the `tools/list` and `tools/call` handlers.
+`McpServer` from `@modelcontextprotocol/server` (v2 of the TypeScript SDK) with `registerTool` and the core zod schemas, over stdio. v2 split the SDK into client and server packages; the server package depends only on zod, where v1's `@modelcontextprotocol/sdk` pulls in Express, Hono and an HTTP stack this stdio server doesn't need. It still negotiates the older protocol versions current clients use.
 
 All tools are read-only toward ESPN. `league` accepts an alias from `leagues.json`.
 
@@ -113,7 +113,8 @@ All tools are read-only toward ESPN. `league` accepts an alias from `leagues.jso
 | `get_recent_activity` | league, limit? | recent adds, drops, waiver results with bids, trades |
 | `set_league_rule` | league, rule, value, source | persist a rule confirmed by upload or answer (writes `leagues.json` only) |
 
-- **Output:** compact JSON, never ESPN's raw payload, so each call costs few tokens.
+- **Output:** compact JSON, never ESPN's raw payload, so each call costs few tokens. List results are wrapped in an object (`{ leagues }`, `{ freeAgents }`, `{ transactions }`), since MCP structured output must be an object.
+- **`set_league_rule` validates** the value against the `LeagueSettings` field at that path before saving, so a bad value can't break later reads.
 - **Runs locally** as a stdio server; ESPN cookies stay on the user's machine.
 
 ### Client compatibility
@@ -123,7 +124,8 @@ The server targets any MCP client, not just Claude: Claude Code, Claude Desktop,
 - **Spec-only features.** Use only tools (and prompts, below). Nothing should depend on a particular client's extensions.
 - **Structured output plus text.** Return `structuredContent` (validated against the output schema) and the same JSON as a text content block, since some clients only read text.
 - **Self-contained descriptions.** Tool and parameter descriptions must make sense to any model. For example, the `league` description should say where valid aliases come from: `list_leagues`.
-- **The server loads its own secrets.** It reads `.env` and `leagues.json` itself, found by walking up from its own location or via `LEAGUES_CONFIG`. Client configs then contain only the launch command, never cookies, and stay identical across clients: `node <repo>/apps/mcp/dist/index.js`.
+- **The server loads its own secrets.** It finds `leagues.json` via `LEAGUES_CONFIG`, else by walking up from its own location, else from the cwd, and reads `.env` from the same directory (variables already in the environment win). Client configs then contain only the launch command, never cookies, and stay identical across clients: `node <repo>/apps/mcp/dist/index.js`.
+- **Config errors are tool errors.** The service is built on the first tool call, not at launch, so a missing `leagues.json` or an expired cookie shows up as a readable message in the client instead of a server that won't start. It's rebuilt whenever `leagues.json` or `.env` changes, so re-copying `espn_s2` needs no restart.
 - **Config examples.** Ship `.mcp.json` for Claude Code at the repo root, and document the equivalent snippets for Claude Desktop, Cursor (`.cursor/mcp.json`) and VS Code (`.vscode/mcp.json`) in the README.
 - **Test with the MCP Inspector** (`npx @modelcontextprotocol/inspector`) as well as Claude Code.
 

@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-07 · Design and specs: [docs/design.md](docs/design.md)
+Last updated: 2026-10-08 · Design and specs: [docs/design.md](docs/design.md)
 
 ## Done
 
@@ -10,15 +10,19 @@ Last updated: 2026-10-07 · Design and specs: [docs/design.md](docs/design.md)
   - core has the zod schemas, `leagues.json` config, `FantasyService`, and league rules discovery (ESPN values plus stored `upload`/`user` overrides, `missingRules` and `conflicts`).
   - 47 unit tests on espn-api's recorded fixtures, plus a fake-fetch end-to-end test of the service.
   - Fixes from the first live run: dropped ESPN's placeholder $0 bids in priority-waiver leagues, and trimmed whitespace in team names.
+- [x] **Fresh clone on a second machine** (macOS): install, build, tests and `pnpm smoke` all pass.
+- [x] **Injury tags spot-checked** against the ESPN app (2026-10-08): four superflex players tagged Q matched, including one projected at 0.0, which is how ESPN shows him too.
+- [x] **Step 3: MCP server** (`apps/mcp`).
+  - [x] All seven tools on MCP SDK v2 (`@modelcontextprotocol/server` 2.1.0), with core schemas as output schemas, structured output plus text, and read-only annotations.
+  - [x] The server finds `leagues.json` and `.env` itself, and rebuilds the service when either changes. Config errors come back as tool errors.
+  - [x] `set_league_rule` validates values against the settings schema before saving.
+  - [x] `.mcp.json` for Claude Code; README config for Claude Desktop, Cursor, VS Code, Codex CLI and Gemini CLI.
+  - [x] 9 tests over an in-memory client. A live stdio run launched from an unrelated cwd returned every tool's data for all three leagues.
+  - [x] Verified 2026-10-08: "show my superflex roster" in Claude Code returned the right starters, bench and IR, and the tools work in the MCP Inspector (CLI mode).
 
 ## In progress / next
 
-- [ ] Spot-check injury tags in `pnpm smoke` against the ESPN app.
-- [ ] **Step 3: MCP server** (`apps/mcp`): `McpServer` over stdio with `registerTool` and the core zod schemas as output schemas.
-  - Tools: `list_leagues`, `get_league_settings`, `get_my_roster`, `get_matchup`, `get_free_agents`, `get_recent_activity`.
-  - Also `set_league_rule`, which persists rules the user confirms by uploading a settings page or answering a question.
-  - Client-agnostic: the server loads `.env` and `leagues.json` itself, and returns structured output plus text. Ship `.mcp.json`, and document config snippets for other clients in the README (see the design doc's client compatibility section).
-  - Done when "show my superflex roster" in Claude Code returns the right starters and bench, and the tools also work in the MCP Inspector.
+- [ ] Check live game-day shapes (fixtures are from 2018): during a game window, confirm `locked` and actual points on `get_matchup`.
 - [ ] **Step 4: Skills:** `weekly-check` and `waivers`, as `SKILL.md` files and as MCP prompts for clients without skills.
   - Bake in these rules of thumb: Tuesday injury tags are stale; lineups lock per player; start the safe lineup; Monday-night backups; every claim needs a drop; IR moves; bye stacking; FAAB discipline; superflex QBs.
   - Done when one real Tuesday waiver run and one Saturday lineup check produce moves the user would actually make.
@@ -39,6 +43,7 @@ Last updated: 2026-10-07 · Design and specs: [docs/design.md](docs/design.md)
 - **Rest-of-season projections.** ESPN returns a stat entry with `statSplitTypeId: 3`, season period, projected source, alongside the season projection. It may be rest-of-season; unverified. Check it against ESPN's ROS rankings before building trades.
 - **Free-agent depth.** `getFreeAgents` pulls ESPN's top 50 by % rostered, then re-sorts by projection, so a low-rostered breakout outside the top 50 can be missed. Consider paging, or ESPN's projection sort filter.
 - **Waiver process hour.** ESPN reports `processHour: 11` with no timezone. Confirm against when claims actually clear.
+- **`get_league_settings` size.** It's about 7 KB (≈2k tokens) per league, mostly scoring items and the team list. Fine for now; if it adds up across three leagues, split standings into `get_teams` (planned for trades anyway) or drop zero-point scoring items.
 - **Trade activity mapping** (message 244) is ported from espn-api but not yet seen in live data. Verify on the first real trade.
 
 ## Ideas / reach goals
