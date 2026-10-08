@@ -2,6 +2,8 @@
 
 Last updated: 2026-10-08 · Design and specs: [docs/design.md](docs/design.md)
 
+**Next session:** step 4 (skills). The live game-day check below can happen whenever a game is on.
+
 ## Done
 
 - [x] **Step 1: Scaffold.** pnpm workspace, strict TypeScript (project references), Vitest, ESLint and Prettier. `.env.example` and `leagues.example.json`. Node 24 via `.nvmrc`.
@@ -43,7 +45,7 @@ Last updated: 2026-10-08 · Design and specs: [docs/design.md](docs/design.md)
 - **Rest-of-season projections.** ESPN returns a stat entry with `statSplitTypeId: 3`, season period, projected source, alongside the season projection. It may be rest-of-season; unverified. Check it against ESPN's ROS rankings before building trades.
 - **Free-agent depth.** `getFreeAgents` pulls ESPN's top 50 by % rostered, then re-sorts by projection, so a low-rostered breakout outside the top 50 can be missed. Consider paging, or ESPN's projection sort filter.
 - **Waiver process hour.** ESPN reports `processHour: 11` with no timezone. Confirm against when claims actually clear.
-- **`get_league_settings` size.** It's about 7 KB (≈2k tokens) per league, mostly scoring items and the team list. Fine for now; if it adds up across three leagues, split standings into `get_teams` (planned for trades anyway) or drop zero-point scoring items.
+- **`get_league_settings` size.** It's about 7 KB (≈2k tokens) per league, mostly scoring items and the team list. Fine for now; if it adds up across three leagues, split standings into `get_teams` (planned for trades anyway) or drop zero-point scoring items. Separately, zod v4 gives every `.int()` field ±2^53 bounds in the tools' JSON Schema, which pads `tools/list`; strip them if tool-list size matters.
 - **Trade activity mapping** (message 244) is ported from espn-api but not yet seen in live data. Verify on the first real trade.
 
 ## Ideas / reach goals
@@ -55,3 +57,4 @@ Last updated: 2026-10-08 · Design and specs: [docs/design.md](docs/design.md)
 - **Pre-lock alerts.** A scheduled check (Claude Code routines or a cron) that pings when a starter turns OUT before kickoff.
 - **Remote MCP** so Claude mobile can reach it. It would need auth, since the server holds ESPN cookies.
 - **Other platforms** (Sleeper, Yahoo) as more clients behind the same core contract.
+- **Public vs private leagues.** A league read without cookies returns 200 for a public league and 401 for a private one; ESPN's settings also carry `settings.isPublic` (both checked live). Add `isPublic` to `get_league_settings` and a cookie-free `isLeaguePublic` probe in espn-client, so onboarding can skip cookies for public leagues.

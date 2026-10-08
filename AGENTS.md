@@ -8,7 +8,7 @@ Read-only ESPN fantasy football service, exposed as an MCP server that should wo
 - `docs/design.md` is the source of truth for scope, architecture, the MCP tool list, skill specs and the trades design.
 - `STATUS.md` holds what's done, what's next and open questions. It's the handoff between sessions and machines (agent memory doesn't travel), so update it when a step or notable task finishes.
 
-**This repo is public.** Keep these out of tracked files: personal league or team names, league ids, cookies, and plans for the hosted web app (which lives in a separate private repo). On the original machine, a private build plan and architecture notes may sit untracked in the repo root, excluded via `.git/info/exclude`. Read them for context if present, but never commit them or copy them into tracked files.
+**This repo is public.** Keep these out of tracked files: personal league or team names, league ids, cookies, and plans for the hosted web app (which lives in a separate private repo). A private build plan and architecture notes may sit untracked in `docs/` (or the repo root), excluded via `.git/info/exclude` rather than `.gitignore` so their names stay out of the public repo. Read them for context if present, but never commit them or copy them into tracked files. If they're copied to a new clone, add them to that clone's `.git/info/exclude` first.
 
 ## Fresh clone / new machine
 
@@ -22,9 +22,11 @@ If `corepack enable` fails on permissions, use `npm i -g pnpm@11` instead.
 
 `.env` (ESPN cookies) and `leagues.json` (league ids, team ids, stored rules) are gitignored, so a clone doesn't have them. Either copy both from the other machine, or recreate them from `.env.example` and `leagues.example.json` following the README. Never ask the user to paste cookie values into chat: they edit `.env` themselves. Then run `pnpm smoke` to confirm live access.
 
+The repo's `.mcp.json` launches `apps/mcp/dist/index.js`, so build before starting a Claude Code session there, and approve the `espn-fantasy` server when asked.
+
 ## Commands
 
-Node 24 is required; the shell's nvm default may be older, so run `nvm use` first. pnpm 11 comes from corepack.
+Node 24 is required; the shell's default Node may differ, so run `nvm use` first. Agent shells are non-interactive and don't load nvm, so prefix commands with `source ~/.nvm/nvm.sh && nvm use &&`. pnpm 11 comes from corepack.
 
 ```sh
 pnpm build        # tsc -b in every package (core depends on espn-client's dist)
@@ -35,6 +37,14 @@ pnpm format       # prettier
 pnpm smoke        # LIVE: hits ESPN for every league in leagues.json; needs .env
 ```
 
+To exercise the MCP server without a chat client (LIVE, after `pnpm build`):
+
+```sh
+npx @modelcontextprotocol/inspector --cli node apps/mcp/dist/index.js --method tools/list
+npx @modelcontextprotocol/inspector --cli node apps/mcp/dist/index.js --method tools/call \
+  --tool-name get_my_roster --tool-arg league=<alias>
+```
+
 Before calling a change done, run build, typecheck, lint and test. Run `pnpm smoke` when a change touches parsing or requests, since fixtures are from 2018–2019 and the live shapes can drift.
 
 ## Layout and boundaries
@@ -42,7 +52,7 @@ Before calling a change done, run build, typecheck, lint and test. Run `pnpm smo
 - `packages/espn-client`: the only code that knows ESPN's JSON. `raw.ts` holds the response shapes, `parse.ts` the pure parsers, `client.ts` the requests, `types.ts` the typed output. Nothing outside this package imports raw shapes.
 - `packages/core`: zod schemas (`schemas.ts`) are the contract every adapter uses. `map.ts` maps client types to schemas, `rules.ts` handles league rules discovery, `service.ts` (`FantasyService`) holds the domain functions, and `config.ts` loads `leagues.json`.
 - `apps/mcp`: a thin MCP adapter over `FantasyService` (SDK v2, `@modelcontextprotocol/server`). `server.ts` registers the tools, `load.ts` finds `leagues.json` and `.env`, `index.ts` is the stdio entry. Tool descriptions must make sense to any model, not just Claude.
-- `skills/` (planned): lineup and waiver judgment lives here, not in code. Core has no opinions.
+- `skills/` (step 4, next): lineup and waiver judgment lives here, not in code. Core has no opinions.
 
 ## Rules
 

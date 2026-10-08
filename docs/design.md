@@ -154,6 +154,7 @@ They hold the judgment; the MCP tools only fetch data. Output is a short per-lea
 
 **Rules of thumb** (bake into both skills):
 
+- A QUESTIONABLE tag with a 0.0 projection usually means ESPN expects the player to sit (seen live in 2026). Treat him as likely out until news says otherwise, not as a normal Q.
 - An injury tag on Tuesday is often left over from last week. Teams post the new report from Wednesday; check Wednesday–Friday before acting.
 - Lineups lock per player at kickoff, not at the week's first game. A Sunday player can still be swapped after Thursday's game.
 - Default to the safe lineup: a questionable star sits until news clears him, then swap him in. A forgotten swap shouldn't mean a zero.
