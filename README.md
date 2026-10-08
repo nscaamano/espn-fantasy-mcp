@@ -28,16 +28,18 @@ pnpm smoke
 
 Private leagues need two cookies from a browser session that's logged in to ESPN.
 
-1. Log in at fantasy.espn.com in Chrome or Edge, then open dev tools (F12).
-2. Go to Application → Storage → Cookies → `https://fantasy.espn.com`.
+1. Log in at fantasy.espn.com in Chrome or Edge, then **open one of your leagues**. The fantasy home page doesn't set the cookies; they only show up once you're on a league page (a URL containing `leagueId=`).
+2. Open dev tools (F12) and go to Application → Storage → Cookies → `https://fantasy.espn.com`.
 3. Copy the values of `espn_s2` (long and URL-encoded; copy it exactly) and `SWID` (keep the `{…}` braces) into `.env`.
 
 `espn_s2` expires every so often. A 401 from `pnpm smoke` means it's time to re-copy it. The cookies stay in `.env` on your machine, and `.env` is gitignored.
 
 ### League and team ids
 
-- **League id:** the `leagueId=` number in your league's URL.
-- **Team id:** the `teamId=` number on your team page.
+Both are in the query string of ESPN's URLs.
+
+- **League id:** open your league; it's the `leagueId=` value in the URL, e.g. `https://fantasy.espn.com/football/league?leagueId=12345678`.
+- **Team id:** click your team (My Team); it's the `teamId=` value in that page's URL, e.g. `https://fantasy.espn.com/football/team?leagueId=12345678&teamId=4&seasonId=2026`. It's a small number (1–12 or so), separate from the league id.
 
 If the team id is wrong, the error message lists every team in the league with its id.
 
