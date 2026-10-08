@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-07
+Last updated: 2026-10-07 · Design and specs: [docs/design.md](docs/design.md)
 
 ## Done
 

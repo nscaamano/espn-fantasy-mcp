@@ -1,8 +1,24 @@
 # CLAUDE.md
 
-Read-only ESPN fantasy football service. Claude reads rosters, matchups, free agents and league activity through it, recommends moves, and the user makes them in the ESPN app. Progress and todo: `STATUS.md`. Update it when a step or notable task finishes.
+Read-only ESPN fantasy football service. Claude reads rosters, matchups, free agents and league activity through it, recommends moves, and the user makes them in the ESPN app.
 
-**This repo is public.** Keep these out of tracked files: personal league or team names, league ids, cookies, and plans for the hosted web app (which lives in a separate private repo). The original build plan and architecture notes may sit untracked in the repo root, excluded via `.git/info/exclude`. Read them for context, but never commit them or quote them into tracked files.
+**Start here:**
+- `docs/design.md` is the source of truth for scope, architecture, the MCP tool list, skill specs and the trades design.
+- `STATUS.md` holds what's done, what's next and open questions. It's the handoff between sessions and machines (Claude's memory doesn't travel), so update it when a step or notable task finishes.
+
+**This repo is public.** Keep these out of tracked files: personal league or team names, league ids, cookies, and plans for the hosted web app (which lives in a separate private repo). On the original machine, a private build plan and architecture notes may sit untracked in the repo root, excluded via `.git/info/exclude`. Read them for context if present, but never commit them or copy them into tracked files.
+
+## Fresh clone / new machine
+
+```sh
+nvm install 24 && nvm use        # .nvmrc pins 24; pnpm 11 needs Node >= 22.13
+corepack enable                  # provides pnpm@11.8.0 from package.json "packageManager"
+pnpm install && pnpm build && pnpm test
+```
+
+If `corepack enable` fails on permissions, use `npm i -g pnpm@11` instead.
+
+`.env` (ESPN cookies) and `leagues.json` (league ids, team ids, stored rules) are gitignored, so a clone doesn't have them. Either copy both from the other machine, or recreate them from `.env.example` and `leagues.example.json` following the README. Never ask the user to paste cookie values into chat: they edit `.env` themselves. Then run `pnpm smoke` to confirm live access.
 
 ## Commands
 
