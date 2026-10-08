@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "pnpm -r build",
-    "typecheck": "tsc -b && tsc -p scripts && tsc -p packages/espn-client/test && tsc -p packages/core/test",
+    "typecheck": "tsc -b && tsc -p scripts && tsc -p packages/espn-client/test && tsc -p packages/core/test && tsc -p apps/mcp/test",
     "test": "vitest run",
     "lint": "eslint .",
     "format": "prettier --write .",

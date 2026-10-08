@@ -1,0 +1,31 @@
+{
+  "name": "@espn-fantasy-mcp/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "espn-fantasy-mcp": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@espn-fantasy-mcp/core": "workspace:*",
+    "@modelcontextprotocol/server": "^2.1.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@espn-fantasy-mcp/espn-client": "workspace:*",
+    "@modelcontextprotocol/client": "^2.1.0"
+  }
+}
