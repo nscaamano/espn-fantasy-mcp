@@ -1,7 +1,8 @@
 // Finds leagues.json and .env without help from the MCP client, so client
 // configs hold only the launch command and never the cookies.
 
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { parseEnv } from "node:util";
 import { FantasyService, findConfigPath } from "@espn-fantasy-mcp/core";
@@ -25,10 +26,11 @@ export function envWithDotenv(configPath: string, env: NodeJS.ProcessEnv): NodeJ
   return { ...parseEnv(readFileSync(file, "utf8")), ...env };
 }
 
+// A content hash rather than mtime: Linux (and WSL) stamps mtime from a coarse
+// clock, so a same-size edit within a few ms looks unchanged. Both files are tiny.
 const stamp = (path: string) => {
   if (!existsSync(path)) return "none";
-  const { mtimeMs, size } = statSync(path);
-  return `${mtimeMs}/${size}`;
+  return createHash("sha1").update(readFileSync(path)).digest("hex");
 };
 
 /**
