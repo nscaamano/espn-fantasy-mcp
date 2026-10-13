@@ -1,0 +1,83 @@
+{
+  "gameId": 1,
+  "id": 1234,
+  "scoringPeriodId": 6,
+  "seasonId": 2026,
+  "segmentId": 0,
+  "pendingTransactions": [
+    {
+      "bidAmount": 0,
+      "executionType": "EXECUTE",
+      "id": "00000000-0000-4000-8000-000000000001",
+      "isPending": true,
+      "items": [
+        {
+          "acquisitionBudget": 0,
+          "fromLineupSlotId": -1,
+          "fromTeamId": 0,
+          "isKeeper": false,
+          "overallPickNumber": 0,
+          "playerId": 4571557,
+          "toLineupSlotId": -1,
+          "toTeamId": 1,
+          "type": "ADD"
+        },
+        {
+          "acquisitionBudget": 0,
+          "fromLineupSlotId": 17,
+          "fromTeamId": 1,
+          "isKeeper": false,
+          "overallPickNumber": 0,
+          "playerId": 4034949,
+          "toLineupSlotId": -1,
+          "toTeamId": 0,
+          "type": "DROP"
+        }
+      ],
+      "processDate": 1791961200000,
+      "proposedDate": 1791914838126,
+      "rating": 0,
+      "scoringPeriodId": 6,
+      "status": "PENDING",
+      "teamId": 1,
+      "type": "WAIVER"
+    },
+    {
+      "bidAmount": 0,
+      "executionType": "EXECUTE",
+      "id": "00000000-0000-4000-8000-000000000002",
+      "isPending": true,
+      "items": [
+        {
+          "acquisitionBudget": 0,
+          "fromLineupSlotId": -1,
+          "fromTeamId": 0,
+          "isKeeper": false,
+          "overallPickNumber": 0,
+          "playerId": -16012,
+          "toLineupSlotId": -1,
+          "toTeamId": 1,
+          "type": "ADD"
+        },
+        {
+          "acquisitionBudget": 0,
+          "fromLineupSlotId": 20,
+          "fromTeamId": 1,
+          "isKeeper": false,
+          "overallPickNumber": 0,
+          "playerId": 4686658,
+          "toLineupSlotId": -1,
+          "toTeamId": 0,
+          "type": "DROP"
+        }
+      ],
+      "processDate": 1791961200000,
+      "proposedDate": 1791914907482,
+      "rating": 0,
+      "scoringPeriodId": 6,
+      "status": "PENDING",
+      "teamId": 1,
+      "type": "WAIVER"
+    }
+  ]
+}

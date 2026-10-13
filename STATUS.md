@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-08 · Design and specs: [docs/design.md](docs/design.md)
+Last updated: 2026-10-13 · Design and specs: [docs/design.md](docs/design.md)
 
 **Next session:** step 4 (skills). The live game-day check below can happen whenever a game is on.
 
@@ -15,12 +15,21 @@ Last updated: 2026-10-08 · Design and specs: [docs/design.md](docs/design.md)
 - [x] **Fresh clone on a second machine** (macOS): install, build, tests and `pnpm smoke` all pass.
 - [x] **Injury tags spot-checked** against the ESPN app (2026-10-08): four superflex players tagged Q matched, including one projected at 0.0, which is how ESPN shows him too.
 - [x] **Step 3: MCP server** (`apps/mcp`).
-  - [x] All seven tools on MCP SDK v2 (`@modelcontextprotocol/server` 2.1.0), with core schemas as output schemas, structured output plus text, and read-only annotations.
+  - [x] All seven original tools on MCP SDK v2 (`@modelcontextprotocol/server` 2.1.0), with core schemas as output schemas, structured output plus text, and read-only annotations.
   - [x] The server finds `leagues.json` and `.env` itself, and rebuilds the service when either changes. Config errors come back as tool errors.
   - [x] `set_league_rule` validates values against the settings schema before saving.
   - [x] `.mcp.json` for Claude Code; README config for Claude Desktop, Cursor, VS Code, Codex CLI and Gemini CLI.
   - [x] 9 tests over an in-memory client. A live stdio run launched from an unrelated cwd returned every tool's data for all three leagues.
   - [x] Verified 2026-10-08: "show my superflex roster" in Claude Code returned the right starters, bench and IR, and the tools work in the MCP Inspector (CLI mode).
+
+- [x] **`get_pending_claims` tool** (2026-10-13). The user's queued claims from `view=mPendingTransactions`: add, drop (with the slot it leaves), bid (null in priority leagues), `proposedAt` and `processesAt`. Names come from one player-card request.
+  - `memberId` is never modeled in espn-client, so it can't reach output. The tests check this, plus the empty case.
+  - Only the user's own team's claims are returned; service filters by `myTeamId` in case ESPN ever sends others.
+  - ESPN exposes no claim priority order, so the tool lists claims in submission order and says so.
+  - The server instructions tell the assistant to call it before recommending claims.
+  - Fixture `pending_transactions.json` was recorded live and scrubbed (see the fixtures README).
+  - Verified live: two claims in the priority league, one $5 FAAB claim, and an empty list in the third league.
+- [x] **WSL timestamp fix** in `apps/mcp/src/load.ts`: the loader now detects changes to `leagues.json`/`.env` by content hash, not mtime and size. Linux's coarse mtime made a same-size edit within a few ms look unchanged; this failed a test on WSL but not macOS.
 
 ## In progress / next
 
@@ -44,7 +53,7 @@ Last updated: 2026-10-08 · Design and specs: [docs/design.md](docs/design.md)
 
 - **Rest-of-season projections.** ESPN returns a stat entry with `statSplitTypeId: 3`, season period, projected source, alongside the season projection. It may be rest-of-season; unverified. Check it against ESPN's ROS rankings before building trades.
 - **Free-agent depth.** `getFreeAgents` pulls ESPN's top 50 by % rostered, then re-sorts by projection, so a low-rostered breakout outside the top 50 can be missed. Consider paging, or ESPN's projection sort filter.
-- **Waiver process hour.** ESPN reports `processHour: 11` with no timezone. Confirm against when claims actually clear.
+- **Waiver process hour.** `acquisitionSettings.waiverProcessHour` is 11 in all three leagues, but it isn't a clock hour in UTC or Eastern time. Every pending claim on 2026-10-13 had `processDate` 07:00 UTC (Wed 3:00 AM ET). `status.waiverProcessStatus` (past runs, keyed by timestamp) shows runs between 07:00 and 08:00 UTC on Wed and some Thu/Fri/Sat/Sun. `status.waiverLastExecutionDate` was Tue 07:24–07:52 UTC, a day not in `waiverProcessDays`. Meaning of 11 unknown. Use a claim's `processesAt` for timing. `get_league_settings` still passes `processHour` through raw; consider replacing it with the last and next run times from `status`.
 - **`get_league_settings` size.** It's about 7 KB (≈2k tokens) per league, mostly scoring items and the team list. Fine for now; if it adds up across three leagues, split standings into `get_teams` (planned for trades anyway) or drop zero-point scoring items. Separately, zod v4 gives every `.int()` field ±2^53 bounds in the tools' JSON Schema, which pads `tools/list`; strip them if tool-list size matters.
 - **Trade activity mapping** (message 244) is ported from espn-api but not yet seen in live data. Verify on the first real trade.
 

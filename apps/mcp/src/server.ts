@@ -9,6 +9,7 @@ import {
   League,
   LeagueSettings,
   Matchup,
+  PendingClaim,
   Roster,
   RuleKey,
   StoredRule,
@@ -24,7 +25,7 @@ const { version } = JSON.parse(
 
 export const POSITIONS = ["QB", "RB", "WR", "TE", "FLEX", "OP", "D/ST", "K"] as const;
 
-const INSTRUCTIONS = `Read-only access to the user's ESPN fantasy football leagues. Start with list_leagues for the league aliases. Leagues can have different rules (PPR vs half-PPR, FAAB vs priority waivers, superflex), so call get_league_settings before advising on a league, and never carry one league's rules over to another. If its missingRules or conflicts are non-empty, ask the user and save the answer with set_league_rule. This server can't make moves: recommend lineup changes, claims, bids and drops for the user to make in the ESPN app.`;
+const INSTRUCTIONS = `Read-only access to the user's ESPN fantasy football leagues. Start with list_leagues for the league aliases. Leagues can have different rules (PPR vs half-PPR, FAAB vs priority waivers, superflex), so call get_league_settings before advising on a league, and never carry one league's rules over to another. If its missingRules or conflicts are non-empty, ask the user and save the answer with set_league_rule. Before recommending waiver claims, call get_pending_claims to see what the user already has queued, so you don't repeat a claim or plan a drop that's already committed. This server can't make moves: recommend lineup changes, claims, bids and drops for the user to make in the ESPN app.`;
 
 const league = z
   .string()
@@ -173,6 +174,20 @@ export function createServer(service: () => FantasyService): McpServer {
         league: args.league,
         transactions: await service().getRecentActivity(args.league, args.limit),
       }),
+  );
+
+  server.registerTool(
+    "get_pending_claims",
+    {
+      title: "My pending claims",
+      description:
+        "The user's waiver claims that are queued but not yet processed in a league: the player to add, the player to drop (with the lineup slot they leave), the FAAB bid (null in priority-waiver leagues), when it was submitted and when ESPN will process it. Call this before recommending claims, so you don't repeat one or drop a player who's already being dropped. An empty list means nothing is queued. ESPN doesn't expose the claim priority order the user set: claims are listed in submission order (proposedAt), which may not be the order they process in, so ask the user if order matters. Only the user's own claims are visible.",
+      inputSchema: z.object({ league }),
+      outputSchema: z.object({ league: z.string(), claims: z.array(PendingClaim) }),
+      annotations: READ,
+    },
+    async (args) =>
+      result({ league: args.league, claims: await service().getPendingClaims(args.league) }),
   );
 
   server.registerTool(

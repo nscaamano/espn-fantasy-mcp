@@ -93,6 +93,80 @@ describe("EspnClient requests", () => {
   });
 });
 
+describe("EspnClient pending claims", () => {
+  it("requests mPendingTransactions and names players from one card request", async () => {
+    const { fetch: base, calls } = fixtureFetch();
+    const card = {
+      players: [
+        {
+          id: 4571557,
+          player: { id: 4571557, fullName: "Test Runner", defaultPositionId: 2, proTeamId: 12 },
+        },
+        {
+          id: 4034949,
+          player: { id: 4034949, fullName: "Test Kicker", defaultPositionId: 5, proTeamId: 9 },
+        },
+      ],
+    };
+    const fetch = (async (input: string | URL | Request, init?: RequestInit) =>
+      new URL(String(input)).searchParams.getAll("view").includes("kona_playercard")
+        ? (await base(input, init), new Response(JSON.stringify(card)))
+        : base(input, init)) as typeof globalThis.fetch;
+
+    const claims = await new EspnClient({ fetch }).getPendingClaims(1234, 2026);
+
+    expect(calls[0]!.url.searchParams.getAll("view")).toEqual(["mPendingTransactions"]);
+    const cardCalls = calls.filter((c) =>
+      c.url.searchParams.getAll("view").includes("kona_playercard"),
+    );
+    expect(cardCalls).toHaveLength(1);
+    expect(JSON.parse(cardCalls[0]!.headers["x-fantasy-filter"]!).players.filterIds.value).toEqual(
+      expect.arrayContaining([4571557, 4034949, -16012, 4686658]),
+    );
+    expect(claims[0]!.add).toMatchObject({
+      playerName: "Test Runner",
+      position: "RB",
+      proTeam: "KC",
+    });
+    expect(claims[0]!.drop).toMatchObject({
+      playerName: "Test Kicker",
+      position: "K",
+      fromSlot: "K",
+    });
+    expect(claims[1]!.add!.playerName).toBeNull();
+  });
+
+  it("never carries ESPN's memberId through", async () => {
+    const raw = {
+      pendingTransactions: [
+        {
+          memberId: "{SECRET-MEMBER-GUID}",
+          type: "WAIVER",
+          status: "PENDING",
+          teamId: 1,
+          bidAmount: 3,
+          items: [{ type: "ADD", playerId: 1, toTeamId: 1, fromLineupSlotId: -1 }],
+        },
+      ],
+    };
+    const fetch = (async () =>
+      new Response(JSON.stringify(raw))) as unknown as typeof globalThis.fetch;
+    const claims = await new EspnClient({ fetch }).getPendingClaims(1, 2026);
+    expect(claims).toHaveLength(1);
+    expect(JSON.stringify(claims)).not.toContain("SECRET");
+  });
+
+  it("skips the player-card request when nothing is queued", async () => {
+    const calls: string[] = [];
+    const fetch = (async (input: string | URL | Request) => {
+      calls.push(String(input));
+      return new Response(JSON.stringify({ pendingTransactions: [] }));
+    }) as unknown as typeof globalThis.fetch;
+    await expect(new EspnClient({ fetch }).getPendingClaims(1, 2026)).resolves.toEqual([]);
+    expect(calls).toHaveLength(1);
+  });
+});
+
 describe("EspnClient errors", () => {
   it("explains a 401 without cookies", async () => {
     const client = new EspnClient({ fetch: statusFetch(401) });

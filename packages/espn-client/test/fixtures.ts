@@ -22,6 +22,7 @@ export function fixtureFetch() {
     else if (views.includes("kona_player_info")) body = fixture("free_agents.json");
     else if (views.includes("kona_playercard")) body = fixture("player_card.json");
     else if (views.includes("mMatchupScore")) body = fixture("boxscore.json");
+    else if (views.includes("mPendingTransactions")) body = fixture("pending_transactions.json");
     else body = fixture("league.json");
     return new Response(JSON.stringify(body), { status: 200 });
   };

@@ -5,6 +5,7 @@ import { EspnClient } from "@espn-fantasy-mcp/espn-client";
 import { describe, expect, it } from "vitest";
 import { fixtureFetch } from "../../espn-client/test/fixtures.js";
 import { loadConfig, type LeaguesConfig } from "../src/config.js";
+import { toPendingClaim } from "../src/map.js";
 import { FantasyService } from "../src/service.js";
 
 const config = (myTeamId = 2): LeaguesConfig => ({
@@ -170,6 +171,42 @@ describe("FantasyService", () => {
     expect(Object.keys(JSON.parse(readFileSync(path, "utf8")).leagues[0].rules)).toEqual([
       "roster.slots",
     ]);
+  });
+});
+
+describe("FantasyService.getPendingClaims", () => {
+  it("returns my queued claims with ISO times and no bid in a priority league", async () => {
+    const claims = await service(1).svc.getPendingClaims("test");
+    expect(claims).toHaveLength(2);
+    expect(claims[0]).toEqual({
+      type: "WAIVER",
+      add: { name: "Player 4571557", position: null, proTeam: null },
+      drop: { name: "Player 4034949", position: null, proTeam: null, slot: "K" },
+      bid: null,
+      proposedAt: "2026-10-13T18:07:18.126Z",
+      processesAt: "2026-10-14T07:00:00.000Z",
+    });
+  });
+
+  it("returns an empty list when only other teams have claims", async () => {
+    await expect(service(2).svc.getPendingClaims("test")).resolves.toEqual([]);
+  });
+
+  it("keeps the bid in a FAAB league", () => {
+    const claim = toPendingClaim(
+      {
+        id: null,
+        type: "WAIVER",
+        teamId: 1,
+        bid: 5,
+        proposedDate: null,
+        processDate: null,
+        add: null,
+        drop: null,
+      },
+      true,
+    );
+    expect(claim).toMatchObject({ bid: 5, add: null, drop: null, processesAt: null });
   });
 });
 

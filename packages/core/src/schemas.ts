@@ -257,3 +257,28 @@ export const Transaction = z.object({
   ),
 });
 export type Transaction = z.infer<typeof Transaction>;
+
+export const ClaimPlayer = z.object({
+  name: z.string(),
+  position: z.string().nullable(),
+  proTeam: z.string().nullable(),
+});
+export type ClaimPlayer = z.infer<typeof ClaimPlayer>;
+
+/** One of the user's queued claims. ESPN doesn't expose the claim priority order. */
+export const PendingClaim = z.object({
+  /** WAIVER, or FREEAGENT while transactions are locked. */
+  type: z.string(),
+  add: ClaimPlayer.nullable(),
+  drop: ClaimPlayer.extend({
+    /** Lineup slot the dropped player leaves, e.g. "BE" or "K". */
+    slot: z.string().nullable(),
+  }).nullable(),
+  /** FAAB bid; null in priority-waiver leagues. */
+  bid: z.number().nullable(),
+  /** When the claim was submitted. */
+  proposedAt: z.string().nullable(),
+  /** When ESPN will process it. */
+  processesAt: z.string().nullable(),
+});
+export type PendingClaim = z.infer<typeof PendingClaim>;

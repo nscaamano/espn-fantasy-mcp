@@ -4,6 +4,7 @@ import {
   parseFreeAgents,
   parseLeagueSettings,
   parseMatchups,
+  parsePendingClaims,
   parseProTeams,
   parseRosters,
 } from "../src/parse.js";
@@ -159,5 +160,35 @@ describe("parseProTeams", () => {
     expect(teams.find((t) => t.id === 0)).toBeUndefined();
     expect(teams.find((t) => t.id === 12)).toEqual({ id: 12, abbrev: "KC", byeWeek: 6 });
     expect(teams.find((t) => t.id === 11)!.abbrev).toBe("IND");
+  });
+});
+
+describe("parsePendingClaims", () => {
+  const raw = fixture<RawLeague>("pending_transactions.json");
+
+  it("pairs each claim's add with its drop and the slot the drop leaves", () => {
+    const claims = parsePendingClaims(raw);
+    expect(claims).toHaveLength(2);
+    expect(claims[0]).toMatchObject({
+      type: "WAIVER",
+      teamId: 1,
+      bid: 0,
+      proposedDate: 1791914838126,
+      processDate: 1791961200000,
+      add: { playerId: 4571557, fromSlot: null, playerName: null },
+      drop: { playerId: 4034949, fromSlot: "K" },
+    });
+    expect(claims[1]!.add!.playerId).toBe(-16012);
+    expect(claims[1]!.drop!.fromSlot).toBe("BE");
+  });
+
+  it("returns nothing when no claims are queued", () => {
+    expect(parsePendingClaims({ ...raw, pendingTransactions: [] })).toEqual([]);
+    expect(parsePendingClaims({ id: 1234 })).toEqual([]);
+  });
+
+  it("skips anything no longer pending", () => {
+    const done = raw.pendingTransactions!.map((t) => ({ ...t, status: "EXECUTED" }));
+    expect(parsePendingClaims({ ...raw, pendingTransactions: done })).toEqual([]);
   });
 });

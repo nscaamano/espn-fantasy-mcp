@@ -9,6 +9,7 @@ import {
   parseFreeAgents,
   parseLeagueSettings,
   parseMatchups,
+  parsePendingClaims,
   parsePlayer,
   parseProTeams,
   parseRosters,
@@ -20,6 +21,7 @@ import type {
   EspnFreeAgent,
   EspnLeagueSettings,
   EspnMatchup,
+  EspnPendingClaim,
   EspnPlayer,
   EspnProTeam,
   EspnRoster,
@@ -183,18 +185,30 @@ export class EspnClient {
       },
     });
     const activity = parseActivity(raw);
-
-    const ids = [...new Set(activity.flatMap((a) => a.items.map((i) => i.playerId)))];
-    const players = await this.getPlayers(leagueId, year, ids);
-    for (const item of activity.flatMap((a) => a.items)) {
-      const p = players.get(item.playerId);
-      if (p) {
-        item.playerName = p.name;
-        item.position = p.position;
-        item.proTeam = p.proTeam;
-      }
-    }
+    await this.nameItems(
+      leagueId,
+      year,
+      activity.flatMap((a) => a.items),
+    );
     return activity;
+  }
+
+  /**
+   * Queued claims (waiver claims, or free-agent adds while transactions are
+   * locked), in ESPN's array order. ESPN has only returned the authenticated
+   * user's own team's claims, and exposes no claim priority order.
+   */
+  async getPendingClaims(leagueId: number, year: number): Promise<EspnPendingClaim[]> {
+    const raw = await this.leagueGet<RawLeague>(leagueId, year, {
+      views: ["mPendingTransactions"],
+    });
+    const claims = parsePendingClaims(raw);
+    await this.nameItems(
+      leagueId,
+      year,
+      claims.flatMap((c) => [c.add, c.drop].filter((p) => p !== null)),
+    );
+    return claims;
   }
 
   // ── Supporting reads ────────────────────────────────────────────────────────
@@ -243,6 +257,29 @@ export class EspnClient {
   async getCurrentWeek(leagueId: number, year: number): Promise<number> {
     const raw = await this.leagueGet<RawLeague>(leagueId, year, { views: ["mSettings"] });
     return currentWeek(raw);
+  }
+
+  /** Fills playerName, position and proTeam in place from one player-card request. */
+  private async nameItems(
+    leagueId: number,
+    year: number,
+    items: {
+      playerId: number;
+      playerName: string | null;
+      position: string | null;
+      proTeam: string | null;
+    }[],
+  ): Promise<void> {
+    const ids = [...new Set(items.map((i) => i.playerId))];
+    const players = await this.getPlayers(leagueId, year, ids);
+    for (const item of items) {
+      const p = players.get(item.playerId);
+      if (p) {
+        item.playerName = p.name;
+        item.position = p.position;
+        item.proTeam = p.proTeam;
+      }
+    }
   }
 
   // ── HTTP ────────────────────────────────────────────────────────────────────

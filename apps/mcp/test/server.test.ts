@@ -47,6 +47,7 @@ describe("MCP server", () => {
       "get_league_settings",
       "get_matchup",
       "get_my_roster",
+      "get_pending_claims",
       "get_recent_activity",
       "list_leagues",
       "set_league_rule",
@@ -82,6 +83,18 @@ describe("MCP server", () => {
     const out = res.structuredContent as { position: string; freeAgents: unknown[] };
     expect(out.position).toBe("WR");
     expect(out.freeAgents).toHaveLength(3);
+  });
+
+  it("returns my pending claims, and an empty list when none are queued", async () => {
+    const mine = await (await connect(1)).call("get_pending_claims", { league: "test" });
+    expect(mine.isError).toBeFalsy();
+    const out = mine.structuredContent as { league: string; claims: { bid: unknown }[] };
+    expect(out.league).toBe("test");
+    expect(out.claims).toHaveLength(2);
+    expect(out.claims[0]).toMatchObject({ type: "WAIVER", bid: null, drop: { slot: "K" } });
+
+    const none = await (await connect(2)).call("get_pending_claims", { league: "test" });
+    expect(none.structuredContent).toEqual({ league: "test", claims: [] });
   });
 
   it("rejects an unknown position before calling ESPN", async () => {

@@ -161,6 +161,32 @@ export interface RawLeague {
   teams?: RawTeam[];
   schedule?: RawMatchup[];
   players?: RawPlayerPoolEntry[];
+  pendingTransactions?: RawPendingTransaction[];
+}
+
+export interface RawTransactionItem {
+  type?: string; // ADD | DROP
+  playerId?: number;
+  fromTeamId?: number;
+  toTeamId?: number;
+  fromLineupSlotId?: number; // -1 when the player wasn't on a roster
+  toLineupSlotId?: number;
+}
+
+/**
+ * A queued claim from `view=mPendingTransactions`. ESPN also sends `memberId`
+ * (the account's user GUID); it's deliberately not modeled so it can't leak.
+ */
+export interface RawPendingTransaction {
+  id?: string;
+  type?: string; // WAIVER, or FREEAGENT while transactions are locked
+  status?: string; // PENDING
+  teamId?: number;
+  bidAmount?: number; // 0 in priority-waiver leagues
+  proposedDate?: number;
+  processDate?: number;
+  scoringPeriodId?: number;
+  items?: RawTransactionItem[];
 }
 
 export interface RawActivityMessage {

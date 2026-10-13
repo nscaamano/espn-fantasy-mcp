@@ -13,13 +13,21 @@ import {
   type LeaguesConfig,
   type StoredRule,
 } from "./config.js";
-import { splitLineup, toFreeAgent, toLeagueSettings, toTransaction, type ByeWeeks } from "./map.js";
+import {
+  splitLineup,
+  toFreeAgent,
+  toLeagueSettings,
+  toPendingClaim,
+  toTransaction,
+  type ByeWeeks,
+} from "./map.js";
 import { applyRules } from "./rules.js";
 import {
   FreeAgent,
   League,
   LeagueSettings,
   Matchup,
+  PendingClaim,
   Roster,
   RuleKey,
   Transaction,
@@ -194,6 +202,22 @@ export class FantasyService {
     return activity.map((a) =>
       Transaction.parse(toTransaction(a, names, settings.acquisition.usesFaab)),
     );
+  }
+
+  /**
+   * My queued claims, in the order ESPN lists them (submission order so far;
+   * the claim priority order isn't exposed). Other teams' claims are filtered
+   * out in case ESPN ever returns them.
+   */
+  async getPendingClaims(league: string): Promise<PendingClaim[]> {
+    const cfg = findLeague(this.config, league);
+    const [claims, settings] = await Promise.all([
+      this.client.getPendingClaims(cfg.leagueId, cfg.year),
+      this.espnSettings(cfg),
+    ]);
+    return claims
+      .filter((c) => c.teamId === cfg.myTeamId)
+      .map((c) => PendingClaim.parse(toPendingClaim(c, settings.acquisition.usesFaab)));
   }
 
   /**

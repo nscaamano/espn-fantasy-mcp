@@ -57,6 +57,7 @@ If the team id is wrong, the error message lists every team in the league with i
 | `get_matchup` | both starting lineups, scores and projected totals |
 | `get_free_agents` | best available at a position by projection, free agent vs waivers |
 | `get_recent_activity` | adds, drops, waiver claims with FAAB bids, trades |
+| `get_pending_claims` | your queued waiver claims: add, drop, bid and when they process |
 | `set_league_rule` | saves a rule you confirmed to `leagues.json` (never writes to ESPN) |
 
 `league` takes the alias from `leagues.json`. Every tool returns structured JSON plus the same JSON as text.

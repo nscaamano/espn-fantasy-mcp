@@ -158,6 +158,32 @@ export interface EspnActivity {
   items: EspnActivityItem[];
 }
 
+export interface EspnClaimPlayer {
+  playerId: number;
+  /** Resolved via player cards; null if ESPN didn't return it. */
+  playerName: string | null;
+  position: string | null;
+  proTeam: string | null;
+  /** Lineup slot the player is leaving (drops only), e.g. "BE" or "K". */
+  fromSlot: string | null;
+}
+
+/** One of the user's queued claims. ESPN exposes no claim priority order. */
+export interface EspnPendingClaim {
+  id: string | null;
+  /** WAIVER, or FREEAGENT while transactions are locked. */
+  type: string;
+  teamId: number;
+  /** ESPN's bidAmount as sent; 0 in priority-waiver leagues. */
+  bid: number;
+  /** Epoch ms the claim was submitted. */
+  proposedDate: number | null;
+  /** Epoch ms the claim is scheduled to process. */
+  processDate: number | null;
+  add: EspnClaimPlayer | null;
+  drop: EspnClaimPlayer | null;
+}
+
 export interface EspnProTeam {
   id: number;
   abbrev: string;

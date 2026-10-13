@@ -3,16 +3,20 @@
 import type {
   EspnActivity,
   EspnActivityAction,
+  EspnClaimPlayer,
   EspnFreeAgent,
   EspnLeagueSettings,
+  EspnPendingClaim,
   EspnPlayer,
   EspnRosterEntry,
   EspnTeam,
 } from "@espn-fantasy-mcp/espn-client";
 import type {
+  ClaimPlayer,
   FreeAgent,
   InjuryStatus,
   LeagueSettings,
+  PendingClaim,
   Player,
   RosterSlot,
   Team,
@@ -253,5 +257,23 @@ export function toTransaction(
       proTeam: i.proTeam,
       bid: usesFaab ? i.bid : null,
     })),
+  };
+}
+
+function toClaimPlayer(p: EspnClaimPlayer): ClaimPlayer {
+  return { name: p.playerName ?? `Player ${p.playerId}`, position: p.position, proTeam: p.proTeam };
+}
+
+const isoOrNull = (ms: number | null) => (ms === null ? null : new Date(ms).toISOString());
+
+/** `usesFaab`: priority-waiver leagues report bidAmount 0, which isn't a bid. */
+export function toPendingClaim(c: EspnPendingClaim, usesFaab: boolean): PendingClaim {
+  return {
+    type: c.type,
+    add: c.add ? toClaimPlayer(c.add) : null,
+    drop: c.drop ? { ...toClaimPlayer(c.drop), slot: c.drop.fromSlot } : null,
+    bid: usesFaab ? c.bid : null,
+    proposedAt: isoOrNull(c.proposedDate),
+    processesAt: isoOrNull(c.processDate),
   };
 }

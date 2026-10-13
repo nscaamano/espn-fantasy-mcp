@@ -17,15 +17,18 @@ import type {
   RawProSchedule,
   RawRosterEntry,
   RawTeam,
+  RawTransactionItem,
 } from "./raw.js";
 import type {
   EspnActivity,
   EspnActivityAction,
   EspnActivityItem,
+  EspnClaimPlayer,
   EspnFreeAgent,
   EspnLeagueSettings,
   EspnMatchup,
   EspnMatchupSide,
+  EspnPendingClaim,
   EspnPlayer,
   EspnProTeam,
   EspnRoster,
@@ -283,6 +286,41 @@ export function parseFreeAgents(raw: RawLeague, year: number, week: number): Esp
     positionalRank: p.ratings?.["0"]?.positionalRanking ?? null,
     player: parsePlayer(p.player ?? {}, year, week),
   }));
+}
+
+/**
+ * Queued claims, in ESPN's array order, without player names (see
+ * EspnClient.getPendingClaims). A claim is one ADD plus an optional DROP.
+ */
+export function parsePendingClaims(raw: RawLeague): EspnPendingClaim[] {
+  const player = (item: RawTransactionItem | undefined): EspnClaimPlayer | null =>
+    item?.playerId === undefined
+      ? null
+      : {
+          playerId: item.playerId,
+          playerName: null,
+          position: null,
+          proTeam: null,
+          fromSlot:
+            item.fromLineupSlotId !== undefined && item.fromLineupSlotId >= 0
+              ? slotLabel(item.fromLineupSlotId)
+              : null,
+        };
+  return (raw.pendingTransactions ?? [])
+    .filter((t) => (t.status ?? "PENDING") === "PENDING" && t.teamId !== undefined)
+    .map((t) => {
+      const items = t.items ?? [];
+      return {
+        id: orNull(t.id),
+        type: t.type ?? "UNKNOWN",
+        teamId: t.teamId!,
+        bid: t.bidAmount ?? 0,
+        proposedDate: orNull(t.proposedDate),
+        processDate: orNull(t.processDate),
+        add: player(items.find((i) => i.type === "ADD")),
+        drop: player(items.find((i) => i.type === "DROP")),
+      };
+    });
 }
 
 /** Activity topics → items, without player names (see EspnClient.getRecentActivity). */
