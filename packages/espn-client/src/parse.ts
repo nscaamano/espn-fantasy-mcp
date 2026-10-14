@@ -15,6 +15,7 @@ import type {
   RawMember,
   RawPlayer,
   RawProSchedule,
+  RawProTeam,
   RawRosterEntry,
   RawTeam,
   RawTransactionItem,
@@ -30,6 +31,7 @@ import type {
   EspnMatchupSide,
   EspnPendingClaim,
   EspnPlayer,
+  EspnProGame,
   EspnProTeam,
   EspnRoster,
   EspnRosterEntry,
@@ -368,5 +370,23 @@ export function parseProTeams(raw: RawProSchedule): EspnProTeam[] {
       // ESPN's own abbrevs are inconsistently cased ("Ind"); prefer the map.
       abbrev: PRO_TEAM_MAP[t.id] ?? t.abbrev ?? String(t.id),
       byeWeek: t.byeWeek && t.byeWeek > 0 ? t.byeWeek : null,
+      games: proGames(t),
     }));
+}
+
+function proGames(t: RawProTeam): Record<number, EspnProGame> {
+  const games: Record<number, EspnProGame> = {};
+  for (const [week, list] of Object.entries(t.proGamesByScoringPeriod ?? {})) {
+    const g = list[0];
+    if (!g || g.date === undefined) continue;
+    const home = g.homeProTeamId === t.id;
+    const opponentId = home ? g.awayProTeamId : g.homeProTeamId;
+    if (opponentId === undefined) continue;
+    games[Number(week)] = {
+      opponent: PRO_TEAM_MAP[opponentId] ?? String(opponentId),
+      home,
+      kickoff: g.date,
+    };
+  }
+  return games;
 }

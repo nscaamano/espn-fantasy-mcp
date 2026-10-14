@@ -184,8 +184,17 @@ export interface EspnPendingClaim {
   drop: EspnClaimPlayer | null;
 }
 
+export interface EspnProGame {
+  opponent: string;
+  home: boolean;
+  /** Epoch ms. */
+  kickoff: number;
+}
+
 export interface EspnProTeam {
   id: number;
   abbrev: string;
   byeWeek: number | null;
+  /** Scoring period (NFL week) → that week's game. Missing on the bye. */
+  games: Record<number, EspnProGame>;
 }

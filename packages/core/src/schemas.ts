@@ -52,6 +52,11 @@ export const Player = z.object({
   proTeam: z.string(),
   injuryStatus: InjuryStatus,
   byeWeek: z.number().int().nullable(),
+  /**
+   * The player's NFL game in the requested week: opponent, home or away, and
+   * kickoff (ISO, UTC). Lineups lock per player at kickoff. Null on a bye.
+   */
+  game: z.object({ opponent: z.string(), home: z.boolean(), kickoff: z.string() }).nullable(),
   /** For the requested week. */
   projectedPoints: z.number().nullable(),
   actualPoints: z.number().nullable(),

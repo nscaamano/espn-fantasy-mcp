@@ -158,7 +158,16 @@ describe("parseProTeams", () => {
   it("reads bye weeks and skips the free-agent team", () => {
     const teams = parseProTeams(fixture<RawProSchedule>("pro_schedule.json"));
     expect(teams.find((t) => t.id === 0)).toBeUndefined();
-    expect(teams.find((t) => t.id === 12)).toEqual({ id: 12, abbrev: "KC", byeWeek: 6 });
+    expect(teams.find((t) => t.id === 12)).toEqual({
+      id: 12,
+      abbrev: "KC",
+      byeWeek: 6,
+      games: { 1: { opponent: "BAL", home: true, kickoff: 1725582000000 } },
+    });
+    expect(teams.find((t) => t.id === 23)!.games[1]).toMatchObject({
+      opponent: "ATL",
+      home: false,
+    });
     expect(teams.find((t) => t.id === 11)!.abbrev).toBe("IND");
   });
 });

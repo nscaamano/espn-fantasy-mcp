@@ -71,9 +71,16 @@ describe("FantasyService", () => {
     expect(brown.player).toMatchObject({
       proTeam: "PIT",
       injuryStatus: "ACTIVE",
-      byeWeek: expect.any(Number),
+      byeWeek: 9,
+      // Fixture schedule is the 2024 one: PIT at ATL, week 1.
+      game: { opponent: "ATL", home: false, kickoff: "2024-09-08T17:00:00.000Z" },
     });
     expect(brown.player.eligibleSlots).not.toContain("BE");
+  });
+
+  it("gives players no game in a week the schedule doesn't cover", async () => {
+    const roster = await service(1).svc.getMyRoster("test", 2);
+    expect(roster.starters.every((s) => s.player.game === null)).toBe(true);
   });
 
   it("returns my matchup with both starting lineups", async () => {

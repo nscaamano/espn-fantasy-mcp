@@ -8,6 +8,7 @@ import type {
   EspnLeagueSettings,
   EspnPendingClaim,
   EspnPlayer,
+  EspnProTeam,
   EspnRosterEntry,
   EspnTeam,
 } from "@espn-fantasy-mcp/espn-client";
@@ -24,8 +25,8 @@ import type {
   TransactionAction,
 } from "./schemas.js";
 
-/** NFL team id → bye week. */
-export type ByeWeeks = ReadonlyMap<number, number | null>;
+/** NFL team id → bye week and per-week games. */
+export type ProSchedule = ReadonlyMap<number, EspnProTeam>;
 
 export function injuryStatus(raw: string | null): InjuryStatus {
   if (!raw) return "ACTIVE";
@@ -55,14 +56,19 @@ export function injuryStatus(raw: string | null): InjuryStatus {
 
 const NON_STARTING = new Set(["BE", "IR"]);
 
-export function toPlayer(p: EspnPlayer, byes: ByeWeeks): Player {
+export function toPlayer(p: EspnPlayer, schedule: ProSchedule, week: number): Player {
+  const team = schedule.get(p.proTeamId);
+  const game = team?.games[week];
   return {
     id: p.id,
     name: p.name,
     position: p.position,
     proTeam: p.proTeam,
     injuryStatus: injuryStatus(p.injuryStatus),
-    byeWeek: byes.get(p.proTeamId) ?? null,
+    byeWeek: team?.byeWeek ?? null,
+    game: game
+      ? { opponent: game.opponent, home: game.home, kickoff: new Date(game.kickoff).toISOString() }
+      : null,
     projectedPoints: p.week.projected,
     actualPoints: p.week.actual,
     percentRostered: p.percentOwned,
@@ -70,8 +76,8 @@ export function toPlayer(p: EspnPlayer, byes: ByeWeeks): Player {
   };
 }
 
-export function toRosterSlot(e: EspnRosterEntry, byes: ByeWeeks): RosterSlot {
-  return { slot: e.slot, locked: e.locked, player: toPlayer(e.player, byes) };
+export function toRosterSlot(e: EspnRosterEntry, schedule: ProSchedule, week: number): RosterSlot {
+  return { slot: e.slot, locked: e.locked, player: toPlayer(e.player, schedule, week) };
 }
 
 // ESPN lists slots by id (QB, RB, WR, TE, OP, D/ST, K, FLEX); sort starters
@@ -95,8 +101,8 @@ const slotRank = (slot: string) => {
   return i === -1 ? SLOT_ORDER.length : i;
 };
 
-export function splitLineup(entries: EspnRosterEntry[], byes: ByeWeeks) {
-  const slots = entries.map((e) => toRosterSlot(e, byes));
+export function splitLineup(entries: EspnRosterEntry[], schedule: ProSchedule, week: number) {
+  const slots = entries.map((e) => toRosterSlot(e, schedule, week));
   const starters = slots
     .filter((s) => !NON_STARTING.has(s.slot))
     .sort((a, b) => slotRank(a.slot) - slotRank(b.slot));
@@ -221,9 +227,9 @@ export function toLeagueSettings(
   };
 }
 
-export function toFreeAgent(fa: EspnFreeAgent, byes: ByeWeeks): FreeAgent {
+export function toFreeAgent(fa: EspnFreeAgent, schedule: ProSchedule, week: number): FreeAgent {
   return {
-    ...toPlayer(fa.player, byes),
+    ...toPlayer(fa.player, schedule, week),
     status: fa.status === "WAIVERS" ? "WAIVERS" : "FREE_AGENT",
     percentChange: fa.player.percentChange,
     positionalRank: fa.positionalRank,

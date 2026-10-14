@@ -19,7 +19,7 @@ import {
   toLeagueSettings,
   toPendingClaim,
   toTransaction,
-  type ByeWeeks,
+  type ProSchedule,
 } from "./map.js";
 import { applyRules } from "./rules.js";
 import {
@@ -116,27 +116,27 @@ export class FantasyService {
   /** Any team's roster, same shape as getMyRoster. */
   async getTeamRoster(league: string, teamId: number, week?: number): Promise<Roster> {
     const cfg = findLeague(this.config, league);
-    const [roster, settings, byes] = await Promise.all([
+    const [roster, settings, schedule] = await Promise.all([
       this.client.getRoster(cfg.leagueId, cfg.year, teamId, week),
       this.espnSettings(cfg),
-      this.byeWeeks(cfg.year),
+      this.proSchedule(cfg.year),
     ]);
     return Roster.parse({
       league: cfg.alias,
       teamId,
       teamName: this.teamName(settings, teamId),
       week: roster.week,
-      ...splitLineup(roster.entries, byes),
+      ...splitLineup(roster.entries, schedule, roster.week),
     });
   }
 
   /** My matchup for a week: both starting lineups and projected/actual totals. */
   async getMatchup(league: string, week?: number): Promise<Matchup> {
     const cfg = findLeague(this.config, league);
-    const [matchups, settings, byes] = await Promise.all([
+    const [matchups, settings, schedule] = await Promise.all([
       this.client.getMatchups(cfg.leagueId, cfg.year, week),
       this.espnSettings(cfg),
-      this.byeWeeks(cfg.year),
+      this.proSchedule(cfg.year),
     ]);
     const mine = matchups.find(
       (m) => m.home?.teamId === cfg.myTeamId || m.away?.teamId === cfg.myTeamId,
@@ -154,7 +154,7 @@ export class FantasyService {
       teamName: this.teamName(settings, s.teamId),
       score: s.score,
       projected: s.projected,
-      starters: splitLineup(s.lineup, byes).starters,
+      starters: splitLineup(s.lineup, schedule, mine.week).starters,
     });
     return Matchup.parse({
       league: cfg.alias,
@@ -177,12 +177,14 @@ export class FantasyService {
   ): Promise<FreeAgent[]> {
     const cfg = findLeague(this.config, league);
     const pool = Math.max(50, limit * 3);
-    const [agents, byes] = await Promise.all([
-      this.client.getFreeAgents(cfg.leagueId, cfg.year, position, pool, week),
-      this.byeWeeks(cfg.year),
+    // Resolve the week from cached settings, so the client needn't look it up.
+    const w = week ?? (await this.espnSettings(cfg)).currentWeek;
+    const [agents, schedule] = await Promise.all([
+      this.client.getFreeAgents(cfg.leagueId, cfg.year, position, pool, w),
+      this.proSchedule(cfg.year),
     ]);
     return agents
-      .map((fa) => FreeAgent.parse(toFreeAgent(fa, byes)))
+      .map((fa) => FreeAgent.parse(toFreeAgent(fa, schedule, w)))
       .sort(
         (a, b) =>
           (b.projectedPoints ?? -1) - (a.projectedPoints ?? -1) ||
@@ -260,12 +262,12 @@ export class FantasyService {
     return value;
   }
 
-  private async byeWeeks(year: number): Promise<ByeWeeks> {
+  private async proSchedule(year: number): Promise<ProSchedule> {
     try {
       const teams = await this.client.getProTeams(year);
-      return new Map(teams.map((t) => [t.id, t.byeWeek]));
+      return new Map(teams.map((t) => [t.id, t]));
     } catch {
-      // Bye weeks are a nice-to-have; don't fail a roster read over them.
+      // Byes and kickoffs are a nice-to-have; don't fail a roster read over them.
       return new Map();
     }
   }
