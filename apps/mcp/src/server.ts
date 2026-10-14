@@ -18,6 +18,7 @@ import {
 } from "@espn-fantasy-mcp/core";
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { loadSkills, promptName, promptText, type Skill } from "./skills.js";
 
 const { version } = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
@@ -46,11 +47,21 @@ function result<T extends Record<string, unknown>>(data: T) {
   };
 }
 
+export interface ServerOptions {
+  /** Workflows to serve as prompts. Defaults to the repo's skills/ folder. */
+  skills?: Skill[];
+  now?: () => Date;
+}
+
 /**
  * `service` is called on every tool call, so the entry point can build it lazily
  * and rebuild it when leagues.json or .env change.
  */
-export function createServer(service: () => FantasyService): McpServer {
+export function createServer(
+  service: () => FantasyService,
+  options: ServerOptions = {},
+): McpServer {
+  const now = options.now ?? (() => new Date());
   const server = new McpServer(
     { name: "espn-fantasy-mcp", version },
     { instructions: INSTRUCTIONS },
@@ -219,6 +230,31 @@ export function createServer(service: () => FantasyService): McpServer {
         stored: service().setLeagueRule(args.league, args.rule, args.value, args.source),
       }),
   );
+
+  for (const skill of options.skills ?? loadSkills()) {
+    server.registerPrompt(
+      promptName(skill),
+      {
+        title: skill.title,
+        description: skill.description,
+        argsSchema: z.object({
+          league: z
+            .string()
+            .optional()
+            .describe("League alias from list_leagues. Omit to cover every league."),
+        }),
+      },
+      (args) => ({
+        description: skill.description,
+        messages: [
+          {
+            role: "user" as const,
+            content: { type: "text" as const, text: promptText(skill, args.league, now()) },
+          },
+        ],
+      }),
+    );
+  }
 
   return server;
 }

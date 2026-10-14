@@ -1,8 +1,8 @@
 # Status
 
-Last updated: 2026-10-13 · Design and specs: [docs/design.md](docs/design.md)
+Last updated: 2026-10-14 · Design and specs: [docs/design.md](docs/design.md)
 
-**Next session:** step 4 (skills). The live game-day check below can happen whenever a game is on.
+**Next session:** the step 4 done-checks: a real Saturday lineup check and a Tuesday waiver run. Also the live game-day check below, during any game window.
 
 ## Done
 
@@ -34,9 +34,12 @@ Last updated: 2026-10-13 · Design and specs: [docs/design.md](docs/design.md)
 ## In progress / next
 
 - [ ] Check live game-day shapes (fixtures are from 2018): during a game window, confirm `locked` and actual points on `get_matchup`.
-- [ ] **Step 4: Skills:** `weekly-check` and `waivers`, as `SKILL.md` files and as MCP prompts for clients without skills.
-  - Bake in these rules of thumb: Tuesday injury tags are stale; lineups lock per player; start the safe lineup; Monday-night backups; every claim needs a drop; IR moves; bye stacking; FAAB discipline; superflex QBs.
-  - Done when one real Tuesday waiver run and one Saturday lineup check produce moves the user would actually make.
+- [ ] **Step 4: Skills.** Written 2026-10-14. The done-check is still pending.
+  - [x] `skills/weekly-check/SKILL.md` and `skills/waivers/SKILL.md` (Agent Skills format), with the rules of thumb from the design doc built in.
+  - [x] Claude Code loads them through symlinks in `.claude/skills/`. The MCP server serves the same files as the prompts `weekly_check` and `waivers` (optional `league` argument; the text starts with the current time). A test fails if a skill names a tool the server doesn't have.
+  - [x] Every player now carries this week's `game` (opponent, home or away, kickoff), from the NFL schedule already fetched for byes. The lock and late-game backup rules use it. Verified live for week 6.
+  - [ ] Done when one real Tuesday waiver run and one Saturday lineup check produce moves the user would actually make. Tune the `SKILL.md` files from what those runs get wrong.
+  - [x] First tuning pass on `waivers` (2026-10-14, from a test run). Injury length comes from news, never from the tag. ESPN's projections and % rostered are inputs, not the answer, so check role, usage and schedule. Drops are judged on role and upside, not % rostered. When streaming, the K or D/ST being replaced is the drop.
 - [ ] **Step 5:** use it for 2–3 weeks and note what's missing.
 
 ## Later
@@ -59,7 +62,6 @@ Last updated: 2026-10-13 · Design and specs: [docs/design.md](docs/design.md)
 
 ## Ideas / reach goals
 
-- **Kickoff times and opponents.** The pro schedule has per-week game times. Surfacing "locks Thursday 8:15pm vs SEA" would sharpen the per-player lock advice.
 - **Matchup strength.** ESPN's `mPositionalRatings` gives the defense-vs-position rank, which is useful for start/sit tiebreaks.
 - **FAAB market memory.** Log every league's winning bids weekly (`getRecentActivity` already returns them) to learn what a breakout RB actually costs in each league.
 - **Manager profiles** for trades: activity level, positional needs, how often they accept trades.

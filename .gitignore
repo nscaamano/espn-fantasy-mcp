@@ -11,3 +11,6 @@ leagues.json
 
 # Windows download markers (WSL)
 *:Zone.Identifier
+
+# Claude Code per-user settings (skills under .claude/skills are tracked)
+.claude/settings.local.json

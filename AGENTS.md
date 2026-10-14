@@ -52,7 +52,11 @@ Before calling a change done, run build, typecheck, lint and test. Run `pnpm smo
 - `packages/espn-client`: the only code that knows ESPN's JSON. `raw.ts` holds the response shapes, `parse.ts` the pure parsers, `client.ts` the requests, `types.ts` the typed output. Nothing outside this package imports raw shapes.
 - `packages/core`: zod schemas (`schemas.ts`) are the contract every adapter uses. `map.ts` maps client types to schemas, `rules.ts` handles league rules discovery, `service.ts` (`FantasyService`) holds the domain functions, and `config.ts` loads `leagues.json`.
 - `apps/mcp`: a thin MCP adapter over `FantasyService` (SDK v2, `@modelcontextprotocol/server`). `server.ts` registers the tools, `load.ts` finds `leagues.json` and `.env`, `index.ts` is the stdio entry. Tool descriptions must make sense to any model, not just Claude.
-- `skills/` (step 4, next): lineup and waiver judgment lives here, not in code. Core has no opinions.
+- `skills/<name>/SKILL.md`: lineup and waiver judgment lives here, not in code. Core has no opinions. Each file is the single source for two forms:
+  - Claude Code loads it through the `.claude/skills/<name>` symlink.
+  - `apps/mcp/src/skills.ts` serves the same text as an MCP prompt (`weekly-check` becomes `weekly_check`).
+  - A test fails if a skill names a tool the server doesn't have.
+  - Edit the `SKILL.md` and both forms follow. Add a symlink for a new skill.
 
 ## Rules
 

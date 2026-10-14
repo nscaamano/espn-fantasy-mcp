@@ -2,7 +2,7 @@
 
 A read-only [MCP](https://modelcontextprotocol.io) server and TypeScript client for ESPN fantasy football. It reads your rosters, matchups, free agents, league settings and league activity from ESPN's fantasy API, so any MCP-enabled assistant can give lineup and waiver advice without screenshots: Claude Code, Claude Desktop, Cursor, VS Code, Codex CLI, Gemini CLI and others. It never makes moves; you make them in the ESPN app.
 
-> **Status:** the ESPN client, core library and MCP server work and have been checked against live 2026 leagues. Lineup and waiver skills are next. See [STATUS.md](STATUS.md) for progress and [docs/design.md](docs/design.md) for the design.
+> **Status:** the ESPN client, core library and MCP server work and have been checked against live 2026 leagues. The lineup and waiver workflows are written and being tried on real weeks. See [STATUS.md](STATUS.md) for progress and [docs/design.md](docs/design.md) for the design.
 
 ```
 packages/
@@ -10,6 +10,7 @@ packages/
   core/          zod schemas, leagues.json config, league rules discovery, domain functions
 apps/
   mcp/           the MCP server (stdio)
+skills/          weekly-check and waivers workflows (Agent Skills; also served as MCP prompts)
 scripts/
   smoke.ts                 live check against your leagues
   port_espn_constants.py   regenerates espn-client/src/constants.ts from espn-api
@@ -53,7 +54,7 @@ If the team id is wrong, the error message lists every team in the league with i
 | --- | --- |
 | `list_leagues` | your leagues with alias, scoring format, waiver type and roster shape |
 | `get_league_settings` | scoring, roster slots, waivers and FAAB left, lineup lock, trades, playoffs, standings, plus `missingRules` and `conflicts` |
-| `get_my_roster` | starters, bench and IR with injury status, bye, projected and actual points, lock state |
+| `get_my_roster` | starters, bench and IR with injury status, bye, this week's game (opponent, kickoff), projected and actual points, lock state |
 | `get_matchup` | both starting lineups, scores and projected totals |
 | `get_free_agents` | best available at a position by projection, free agent vs waivers |
 | `get_recent_activity` | adds, drops, waiver claims with FAAB bids, trades |
@@ -61,6 +62,21 @@ If the team id is wrong, the error message lists every team in the league with i
 | `set_league_rule` | saves a rule you confirmed to `leagues.json` (never writes to ESPN) |
 
 `league` takes the alias from `leagues.json`. Every tool returns structured JSON plus the same JSON as text.
+
+### Workflows: skills and prompts
+
+The judgment lives in two workflows in `skills/`. Each is a `SKILL.md` in the [Agent Skills](https://agentskills.io) format:
+
+- **weekly-check:** flags injured, questionable, bye-week and zero-projection starters, checks the news, and gives start/sit moves per league. Run it before Thursday's game and again on Saturday or Sunday morning.
+- **waivers:** finds roster holes, ranks free agents by fit, and gives FAAB bids or claim order with a named drop for every claim. Run it Monday night or Tuesday, before claims process.
+
+How to run them:
+
+- **Claude Code:** sees them automatically through symlinks in `.claude/skills/`. Ask for "a weekly check" or "waiver run", or invoke `/weekly-check` or `/waivers`.
+- **Other skills-capable clients:** point them at `skills/`.
+- **Clients without skills:** use the MCP prompts `weekly_check` and `waivers`, generated from the same files. Each takes an optional `league` argument.
+
+Injury news needs the assistant's own web search; without it, the workflows say so and fall back to ESPN's tags.
 
 The server finds `leagues.json` by itself (set `LEAGUES_CONFIG` to put it somewhere else), and reads ESPN cookies from the `.env` next to it, so client configs only need the launch command and never contain cookies. Edits to either file are picked up on the next tool call, without a restart.
 

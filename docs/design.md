@@ -134,8 +134,10 @@ The server targets any MCP client, not just Claude: Claude Code, Claude Desktop,
 
 They hold the judgment; the MCP tools only fetch data. Output is a short per-league list of moves for the user to make in the app.
 
-- **Primary form:** `SKILL.md` files in `skills/` (the Agent Skills format), used by Claude Code and other clients that support skills.
-- **Portable form:** the same workflows exposed as MCP **prompts** (`weekly_check`, `waivers`), so any client that supports MCP prompts gets them too. Write each workflow once and generate both forms from it, so they can't drift apart.
+- **Primary form:** `SKILL.md` files in `skills/` (the Agent Skills format), used by Claude Code and other clients that support skills. Claude Code finds them through symlinks in `.claude/skills/`.
+- **Portable form:** the same workflows exposed as MCP **prompts** (`weekly_check`, `waivers`), so any client that supports MCP prompts gets them too. The server reads the `SKILL.md` files at startup, so there's one source and the two forms can't drift apart.
+  - Each prompt takes an optional `league` and starts with the current time in Eastern, since the advice depends on the day (Tuesday tags, Friday designations, game-day inactives).
+- **Kickoff data:** every player carries this week's `game` (opponent, home or away, kickoff), or null on a bye. The per-player lock and late-game backup rules depend on it.
 - **Injury news** needs the client's own web search. Where a client has none, the workflow says so and falls back to ESPN injury tags, labeled as such.
 
 **weekly-check:** run before each week's first game, and again on Saturday.
