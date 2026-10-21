@@ -127,6 +127,34 @@ Desktop apps don't always see the `node` from nvm. If the server won't start, se
 
 To try the tools without an assistant, use the [MCP Inspector](https://github.com/modelcontextprotocol/inspector): `npx @modelcontextprotocol/inspector node apps/mcp/dist/index.js`.
 
+### Remote hosting (HTTP)
+
+The commands above use stdio: the client launches the server on your machine. Some clients can't do that, such as claude.ai custom connectors, which also reach the Claude mobile apps. For those, run the HTTP entry point on any host that runs Node 24 and serves HTTPS:
+
+```sh
+pnpm install && pnpm build
+pnpm start                    # node apps/mcp/dist/serve.js
+```
+
+All configuration comes from environment variables:
+
+| Variable | Meaning |
+| --- | --- |
+| `MCP_AUTH_TOKEN` | Required. A random secret of at least 32 characters, e.g. from `openssl rand -hex 32`. |
+| `PORT` | Port to listen on (default 3000). |
+| `ESPN_S2`, `SWID` | Your ESPN cookies. |
+| `LEAGUES_CONFIG` | Path to `leagues.json`. Put it on persistent storage so rules saved with `set_league_rule` survive restarts. |
+| `LEAGUES_JSON` | Contents of `leagues.json`, written to `LEAGUES_CONFIG` on first start if that file doesn't exist yet. |
+
+Endpoints:
+
+- `GET /health` returns `ok`. It needs no token and exposes no data, so it's safe for health checks.
+- `/mcp/<token>` is the MCP endpoint, for clients that only take a URL, like claude.ai custom connectors.
+- `/mcp` with an `Authorization: Bearer <token>` header serves clients that can send headers.
+- Anything else, including a wrong token, gets an empty 404.
+
+The server holds your ESPN cookies, so treat the token URL like a password: anyone with it can read your leagues. To revoke access, change `MCP_AUTH_TOKEN` and restart. The hosted server keeps its own copy of `leagues.json`, so rules saved through it don't show up in your local copy, and the reverse.
+
 ## Commands
 
 | Command | Does |

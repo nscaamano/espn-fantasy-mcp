@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-14 · Design and specs: [docs/design.md](docs/design.md)
+Last updated: 2026-10-21 · Design and specs: [docs/design.md](docs/design.md)
 
 **Next session:** the step 4 done-checks: a real Saturday lineup check and a Tuesday waiver run. Also the live game-day check below, during any game window.
 
@@ -31,6 +31,12 @@ Last updated: 2026-10-14 · Design and specs: [docs/design.md](docs/design.md)
   - Verified live: two claims in the priority league, one $5 FAAB claim, and an empty list in the third league.
 - [x] **WSL timestamp fix** in `apps/mcp/src/load.ts`: the loader now detects changes to `leagues.json`/`.env` by content hash, not mtime and size. Linux's coarse mtime made a same-size edit within a few ms look unchanged; this failed a test on WSL but not macOS.
 
+- [x] **Remote HTTP mode** (2026-10-16). `pnpm start` serves the same tools and prompts over Streamable HTTP, behind a shared-secret token (in the path or as a bearer header) with an unauthenticated `/health`.
+  - `LEAGUES_JSON` seeds `LEAGUES_CONFIG` on first start.
+  - Verified on a hosted deployment: live ESPN reads work from a cloud host, and claude.ai connects as a custom connector.
+  - Provider-specific setup stays out of the repo.
+- [x] **CI** (2026-10-21). GitHub Actions runs build, typecheck, lint, format check and tests on every push and pull request.
+
 ## In progress / next
 
 - [ ] Check live game-day shapes (fixtures are from 2018): during a game window, confirm `locked` and actual points on `get_matchup`.
@@ -40,6 +46,10 @@ Last updated: 2026-10-14 · Design and specs: [docs/design.md](docs/design.md)
   - [x] Every player now carries this week's `game` (opponent, home or away, kickoff), from the NFL schedule already fetched for byes. The lock and late-game backup rules use it. Verified live for week 6.
   - [ ] Done when one real Tuesday waiver run and one Saturday lineup check produce moves the user would actually make. Tune the `SKILL.md` files from what those runs get wrong.
   - [x] First tuning pass on `waivers` (2026-10-14, from a test run). Injury length comes from news, never from the tag. ESPN's projections and % rostered are inputs, not the answer, so check role, usage and schedule. Drops are judged on role and upside, not % rostered. When streaming, the K or D/ST being replaced is the drop.
+  - [ ] Proposed from the first `weekly-check` run (2026-10-14), not yet applied:
+    - When a flagged starter has no healthy bench backup, check `get_free_agents` for a fill-in with the same or a later kickoff, and name a drop.
+    - Handle a player in an IR slot whose tag softened (for example, IR to DOUBTFUL): tell the user to check whether ESPN still allows him there.
+    - Note that Thursday afternoon, after the Wednesday and Thursday practice reports, is the best time for the first check.
 - [ ] **Step 5:** use it for 2–3 weeks and note what's missing.
 
 ## Later
@@ -54,6 +64,9 @@ Last updated: 2026-10-14 · Design and specs: [docs/design.md](docs/design.md)
 
 ## Open questions
 
+- **OAuth for the HTTP mode.** A token in the URL is simple but weaker. claude.ai connectors support OAuth, which would allow per-device revocation and avoid long-lived secrets in URLs.
+- **Retry on network errors.** On 2026-10-14, one of ESPN's CDN addresses failed intermittently. Node's `fetch` only tried that first address, so every call failed for a few minutes. One retry on connect errors in espn-client would ride that out.
+
 - **Rest-of-season projections.** ESPN returns a stat entry with `statSplitTypeId: 3`, season period, projected source, alongside the season projection. It may be rest-of-season; unverified. Check it against ESPN's ROS rankings before building trades.
 - **Free-agent depth.** `getFreeAgents` pulls ESPN's top 50 by % rostered, then re-sorts by projection, so a low-rostered breakout outside the top 50 can be missed. Consider paging, or ESPN's projection sort filter.
 - **Waiver process hour.** `acquisitionSettings.waiverProcessHour` is 11 in all three leagues, but it isn't a clock hour in UTC or Eastern time. Every pending claim on 2026-10-13 had `processDate` 07:00 UTC (Wed 3:00 AM ET). `status.waiverProcessStatus` (past runs, keyed by timestamp) shows runs between 07:00 and 08:00 UTC on Wed and some Thu/Fri/Sat/Sun. `status.waiverLastExecutionDate` was Tue 07:24–07:52 UTC, a day not in `waiverProcessDays`. Meaning of 11 unknown. Use a claim's `processesAt` for timing. `get_league_settings` still passes `processHour` through raw; consider replacing it with the last and next run times from `status`.
@@ -66,6 +79,5 @@ Last updated: 2026-10-14 · Design and specs: [docs/design.md](docs/design.md)
 - **FAAB market memory.** Log every league's winning bids weekly (`getRecentActivity` already returns them) to learn what a breakout RB actually costs in each league.
 - **Manager profiles** for trades: activity level, positional needs, how often they accept trades.
 - **Pre-lock alerts.** A scheduled check (Claude Code routines or a cron) that pings when a starter turns OUT before kickoff.
-- **Remote MCP** so Claude mobile can reach it. It would need auth, since the server holds ESPN cookies.
 - **Other platforms** (Sleeper, Yahoo) as more clients behind the same core contract.
 - **Public vs private leagues.** A league read without cookies returns 200 for a public league and 401 for a private one; ESPN's settings also carry `settings.isPublic` (both checked live). Add `isPublic` to `get_league_settings` and a cookie-free `isLeaguePublic` probe in espn-client, so onboarding can skip cookies for public leagues.

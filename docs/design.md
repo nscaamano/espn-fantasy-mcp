@@ -130,6 +130,20 @@ The server targets any MCP client, not just Claude: Claude Code, Claude Desktop,
 - **Config examples.** Ship `.mcp.json` for Claude Code at the repo root, and document the equivalent snippets for Claude Desktop, Cursor (`.cursor/mcp.json`) and VS Code (`.vscode/mcp.json`) in the README.
 - **Test with the MCP Inspector** (`npx @modelcontextprotocol/inspector`) as well as Claude Code.
 
+### Remote hosting
+
+Clients that can't launch a local process, like claude.ai custom connectors and the Claude mobile apps, need the server over HTTP. `serve.ts` (`pnpm start`) runs the same tools and prompts over Streamable HTTP. It works on any Node 24 host behind HTTPS, and the repo stays provider-neutral.
+
+- **Stateless:** each request gets a fresh server instance from the SDK's `createMcpHandler`, so there's no session state to lose on a restart.
+- **Access is a shared secret** (`MCP_AUTH_TOKEN`, at least 32 characters). Clients send it in the path (`/mcp/<token>`) when they only take a URL, or as a bearer header.
+  - Comparison is constant-time.
+  - A missing or wrong token gets an empty 404, so the endpoint doesn't advertise itself.
+  - The token is stripped before the request reaches the MCP handler.
+  - OAuth would be the stronger long-term option (see STATUS).
+- **`GET /health`** is unauthenticated and returns no data, for the host's health checks.
+- **Config comes from the environment:** cookies in `ESPN_S2` and `SWID`, and `LEAGUES_CONFIG` pointing at persistent storage. `LEAGUES_JSON` seeds that file on first start, and later `set_league_rule` writes persist there.
+- **Separate config copies:** a hosted server and a local one each have their own `leagues.json`, so saved rules don't sync between them.
+
 ## Skills (step 4)
 
 They hold the judgment; the MCP tools only fetch data. Output is a short per-league list of moves for the user to make in the app.
