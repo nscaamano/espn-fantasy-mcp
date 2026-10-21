@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "smoke": "pnpm build && node --env-file-if-exists=.env scripts/smoke.ts"
+    "smoke": "pnpm build && node --env-file-if-exists=.env scripts/smoke.ts",
+    "start": "node apps/mcp/dist/serve.js"
   },
   "devDependencies": {
     "@espn-fantasy-mcp/core": "workspace:*",

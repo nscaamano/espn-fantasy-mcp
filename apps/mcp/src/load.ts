@@ -2,10 +2,11 @@
 // configs hold only the launch command and never the cookies.
 
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { parseEnv } from "node:util";
-import { FantasyService, findConfigPath } from "@espn-fantasy-mcp/core";
+import { FantasyService, LeaguesConfig, findConfigPath, saveConfig } from "@espn-fantasy-mcp/core";
+import { z } from "zod";
 
 /** LEAGUES_CONFIG, else the nearest leagues.json above this package, else above the cwd. */
 export function resolveConfigPath(
@@ -48,4 +49,26 @@ export function serviceLoader(env: NodeJS.ProcessEnv = process.env): () => Fanta
     }
     return cached.service;
   };
+}
+
+/**
+ * First boot on a fresh volume: when LEAGUES_CONFIG names a file that doesn't
+ * exist yet and LEAGUES_JSON holds its contents, validate and write it. Later
+ * edits (set_league_rule) then persist on the volume. Returns the path written.
+ */
+export function seedConfig(env: NodeJS.ProcessEnv = process.env): string | null {
+  const path = env.LEAGUES_CONFIG;
+  const json = env.LEAGUES_JSON;
+  if (!path || !json || existsSync(path)) return null;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch (err) {
+    throw new Error(`LEAGUES_JSON isn't valid JSON: ${(err as Error).message}`, { cause: err });
+  }
+  const parsed = LeaguesConfig.safeParse(raw);
+  if (!parsed.success) throw new Error(`Invalid LEAGUES_JSON:\n${z.prettifyError(parsed.error)}`);
+  mkdirSync(dirname(path), { recursive: true });
+  saveConfig(parsed.data, path);
+  return path;
 }
