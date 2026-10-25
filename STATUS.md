@@ -4,7 +4,7 @@ Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
 
 **Next session**, in order:
 
-1. **Finish deploy-on-push for the hosted server.** The hosted copy should deploy from `main` only after CI passes. The repo side is done (CI is green); what's left is on the host. See the private runbook, which isn't in git, so copy it to the new machine.
+1. **Quick wins from the tooling requests** below: items 1–4 (multi-league calls, `lastNewsDate`, free-agent sort, other teams' rosters).
 2. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves. On a game day, also do the live game-day check below.
 3. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
 4. **Add a network retry to espn-client** (see open questions). It's small and prevents the CDN failure seen on 2026-10-14.
@@ -39,6 +39,7 @@ Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
   - Verified on a hosted deployment: live ESPN reads work from a cloud host, and claude.ai connects as a custom connector.
   - Provider-specific setup stays out of the repo.
 - [x] **CI** (2026-10-21). GitHub Actions runs build, typecheck, lint, format check and tests on every push and pull request.
+- [x] **Deploy-on-push** (2026-10-25). The hosted copy deploys from `main` after CI passes. The setup lives on the host; details are in the private runbook.
 
 ## In progress / next
 
@@ -47,6 +48,7 @@ Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
   - [x] `skills/weekly-check/SKILL.md` and `skills/waivers/SKILL.md` (Agent Skills format), with the rules of thumb from the design doc built in.
   - [x] Claude Code loads them through symlinks in `.claude/skills/`. The MCP server serves the same files as the prompts `weekly_check` and `waivers` (optional `league` argument; the text starts with the current time). A test fails if a skill names a tool the server doesn't have.
   - [x] Every player now carries this week's `game` (opponent, home or away, kickoff), from the NFL schedule already fetched for byes. The lock and late-game backup rules use it. Verified live for week 6.
+  - [x] `skills/scoreboard/SKILL.md` (2026-10-25): every league's matchup on one screen. A summary table puts each side's top three scorers next to its score, then each league's starters slot by slot with points and projections. It shows status only, without advice. Written from a real Sunday request made from the phone.
   - [ ] Done when one real Tuesday waiver run and one Saturday lineup check produce moves the user would actually make. Tune the `SKILL.md` files from what those runs get wrong.
   - [x] First tuning pass on `waivers` (2026-10-14, from a test run). Injury length comes from news, never from the tag. ESPN's projections and % rostered are inputs, not the answer, so check role, usage and schedule. Drops are judged on role and upside, not % rostered. When streaming, the K or D/ST being replaced is the drop.
   - [ ] Proposed from the first `weekly-check` run (2026-10-14), not yet applied:
@@ -54,6 +56,20 @@ Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
     - Handle a player in an IR slot whose tag softened (for example, IR to DOUBTFUL): tell the user to check whether ESPN still allows him there.
     - Note that Thursday afternoon, after the Wednesday and Thursday practice reports, is the best time for the first check.
 - [ ] **Step 5:** use it for 2–3 weeks and note what's missing.
+
+## Tooling requests (from mobile use, 2026-10-25)
+
+After a few weeks of use from the Claude iPhone app, the assistant listed the tools that slowed it down. Its top two were **fresher injury status** (an ESPN tag showed OUT while the app showed Q) and a **lineup optimizer** (a bye-week player almost stayed in a lineup). Ordered here from easiest to hardest:
+
+1. [ ] **Multi-league calls.** Easy. Every check makes the same call once per league. Let `get_matchup` and `get_my_roster` take `league: "all"` (or add a `get_scoreboard` tool) and run the leagues in parallel in the service. The `scoreboard` skill would use it.
+2. [ ] **Status freshness (`lastNewsDate`).** Easy. ESPN already sends `player.lastNewsDate` in rosters, matchups and free agents (it's in the recorded fixtures), and we drop it. Add it to `Player`. It dates the latest news, not the status change itself, but it's the freshness signal ESPN offers. While in there, check the stale OUT: the parser prefers `player.injuryStatus` and falls back to the roster entry's own `injuryStatus`. Log both when they disagree, to see which one the app shows.
+3. [ ] **Free-agent sort by season value.** Easy. `seasonProjectedPoints` and `byeWeek` are already in the output; add `sort: "week" | "season"` to `get_free_agents`. Schedule strength is a separate, medium job (see Matchup strength under ideas). True rest-of-season projections are still an open question.
+4. [ ] **Other teams' rosters.** Easy. `get_teams` and `get_team_roster`, already planned for trades: core has `getTeamRoster`, and espn-client fetches every roster in one request. Also shows who might compete for a claim.
+5. [ ] **Player lookup by name** (`get_player(name, league)`). Small to medium. It returns ownership (which team, or FA/waivers), status and projections. It needs a name filter in the `x-fantasy-filter` request (check espn-api; not yet verified) plus a check against every roster. It also covers breakouts outside the free-agent pool's top 50 (see Free-agent depth).
+6. [ ] **FAAB bid history by position.** Medium. Winning bids are in `get_recent_activity`, but a season's worth means paging the activity endpoint and aggregating by position and week. Same as FAAB market memory under ideas.
+7. [ ] **Lineup optimizer** (`get_optimal_lineup`). Medium. It fills slots from `eligibleSlots` by projection, excluding byes and OUT/IR/SUSPENDED players. It flags game-time risk using `game.kickoff`: a Q starter whose only eligible backup kicks off at the same time or earlier. It's mechanical, so it can live in core without breaking "core has no opinions" as long as news-based judgment stays in `weekly-check`. Small brute force or matching over a roster of about 16.
+8. [ ] **Practice reports and inactives.** Hard. ESPN's fantasy API has no practice participation, and inactives land about 90 minutes before kickoff. It would need ESPN's separate, also undocumented, news feed or another source, plus polling on game day. Until then, the skills use web search.
+9. [ ] **Write actions** (`set_lineup`, `add_drop`, `submit_claim`). Hardest, and it needs a decision first: the project is read-only by design. ESPN's write endpoints are unofficial and thinly covered by espn-api, a bad call costs a real roster move, and the hosted server's token-in-URL auth would be guarding writes (see OAuth under open questions). If pursued: lineup moves first (reversible until kickoff), every write behind an explicit confirmation (MCP elicitation where the client supports it), and claims last.
 
 ## Later
 
