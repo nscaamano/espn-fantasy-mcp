@@ -4,7 +4,7 @@ Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
 
 **Next session**, in order:
 
-1. **Quick wins from the tooling requests** below: items 1–4 (multi-league calls, `lastNewsDate`, free-agent sort, other teams' rosters).
+1. **Lineup optimizer** (tooling request 7), the other half of the assistant's top two.
 2. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves. On a game day, also do the live game-day check below.
 3. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
 4. **Add a network retry to espn-client** (see open questions). It's small and prevents the CDN failure seen on 2026-10-14.
@@ -61,10 +61,12 @@ Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
 
 After a few weeks of use from the Claude iPhone app, the assistant listed the tools that slowed it down. Its top two were **fresher injury status** (an ESPN tag showed OUT while the app showed Q) and a **lineup optimizer** (a bye-week player almost stayed in a lineup). Ordered here from easiest to hardest:
 
-1. [ ] **Multi-league calls.** Easy. Every check makes the same call once per league. Let `get_matchup` and `get_my_roster` take `league: "all"` (or add a `get_scoreboard` tool) and run the leagues in parallel in the service. The `scoreboard` skill would use it.
-2. [ ] **Status freshness (`lastNewsDate`).** Easy. ESPN already sends `player.lastNewsDate` in rosters, matchups and free agents (it's in the recorded fixtures), and we drop it. Add it to `Player`. It dates the latest news, not the status change itself, but it's the freshness signal ESPN offers. While in there, check the stale OUT: the parser prefers `player.injuryStatus` and falls back to the roster entry's own `injuryStatus`. Log both when they disagree, to see which one the app shows.
-3. [ ] **Free-agent sort by season value.** Easy. `seasonProjectedPoints` and `byeWeek` are already in the output; add `sort: "week" | "season"` to `get_free_agents`. Schedule strength is a separate, medium job (see Matchup strength under ideas). True rest-of-season projections are still an open question.
-4. [ ] **Other teams' rosters.** Easy. `get_teams` and `get_team_roster`, already planned for trades: core has `getTeamRoster`, and espn-client fetches every roster in one request. Also shows who might compete for a claim.
+1. [x] **Multi-league calls** (2026-10-25). `get_scoreboard` returns my matchup in every league from one call, run in parallel; a league that fails (a bye, an ESPN error) is listed in `errors` instead of failing the rest. The `scoreboard` skill uses it. Rosters are still per league.
+2. [x] **Status freshness** (2026-10-25). Every `Player` has `lastNewsDate` (when ESPN last posted news on him), and rosters and matchups have `asOf` (when they were read), so the assistant can tell a stale tag or an old result. Checked live:
+   - Rosters and free agents carry `lastNewsDate` for everyone but team defenses. **ESPN's matchup data doesn't include it** (the 2018 fixtures did), so it's null in `get_matchup` and `get_scoreboard`, and those tools say to use `get_my_roster` when freshness matters.
+   - The stale-OUT theory about reading the wrong field was wrong: the roster entry's own `injuryStatus` reads `NORMAL` for every player in 2026, and the parser already uses the player's. ESPN's read host doesn't cache either (`must-revalidate`, CloudFront misses). The likely cause was the assistant reusing an earlier result, or ESPN's API lagging its app; `asOf` covers the first.
+3. [x] **Free-agent sort by season value** (2026-10-25). `get_free_agents` takes `sort: "week" | "season"`; `season` ranks by ESPN's full-season projection, which surfaces stash candidates. Schedule strength is a separate, medium job (see Matchup strength under ideas). True rest-of-season projections are still an open question.
+4. [x] **Other teams' rosters** (2026-10-25). `get_teams` (record, points, seed, waiver rank, FAAB left) and `get_team_roster` (any team, same shape as `get_my_roster`). These were the data the trades skill needed.
 5. [ ] **Player lookup by name** (`get_player(name, league)`). Small to medium. It returns ownership (which team, or FA/waivers), status and projections. It needs a name filter in the `x-fantasy-filter` request (check espn-api; not yet verified) plus a check against every roster. It also covers breakouts outside the free-agent pool's top 50 (see Free-agent depth).
 6. [ ] **FAAB bid history by position.** Medium. Winning bids are in `get_recent_activity`, but a season's worth means paging the activity endpoint and aggregating by position and week. Same as FAAB market memory under ideas.
 7. [ ] **Lineup optimizer** (`get_optimal_lineup`). Medium. It fills slots from `eligibleSlots` by projection, excluding byes and OUT/IR/SUSPENDED players. It flags game-time risk using `game.kickoff`: a Q starter whose only eligible backup kicks off at the same time or earlier. It's mechanical, so it can live in core without breaking "core has no opinions" as long as news-based judgment stays in `weekly-check`. Small brute force or matching over a roster of about 16.
@@ -73,7 +75,7 @@ After a few weeks of use from the Claude iPhone app, the assistant listed the to
 
 ## Later
 
-- [ ] **Trades skill.** Add `get_teams` and `get_team_roster` tools; core already has `getTeamRoster`, and espn-client already fetches every roster in one request.
+- [ ] **Trades skill.** The data tools exist now (`get_teams`, `get_team_roster`); the skill itself is next.
   - Fix mode fills my hole from another team's surplus.
   - Opportunity mode covers consolidation, buy-low and sell-high.
   - Every proposal gets a fairness check.

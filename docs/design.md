@@ -107,9 +107,12 @@ All tools are read-only toward ESPN. `league` accepts an alias from `leagues.jso
 | --- | --- | --- |
 | `list_leagues` | — | my leagues with scoring type and format |
 | `get_league_settings` | league | roster slots, scoring, FAAB remaining, waiver rules, `missingRules`, `conflicts` |
-| `get_my_roster` | league, week? | starters, bench, IR with injury tags, byes, projections, lock state |
-| `get_matchup` | league, week? | both starting lineups and projected totals |
-| `get_free_agents` | league, position, limit? | top available by projection; waiver vs FA status |
+| `get_my_roster` | league, week? | starters, bench, IR with injury tags, `lastNewsDate`, byes, projections, lock state, `asOf` |
+| `get_matchup` | league, week? | both starting lineups and projected totals, `asOf` (ESPN's matchup data has no `lastNewsDate`) |
+| `get_scoreboard` | week? | my matchup in every league, in parallel; unreadable leagues go to `errors` |
+| `get_teams` | league | every team: record, points, seed, waiver rank, FAAB left |
+| `get_team_roster` | league, teamId, week? | any team's roster, same shape as `get_my_roster` |
+| `get_free_agents` | league, position?, limit?, sort? | top available by week (default) or full-season projection; waiver vs FA status |
 | `get_recent_activity` | league, limit? | recent adds, drops, waiver results with bids, trades |
 | `get_pending_claims` | league | my queued claims: add, drop (and the slot it leaves), bid (null in priority leagues), submitted and processing times. ESPN exposes no claim order |
 | `set_league_rule` | league, rule, value, source | persist a rule confirmed by upload or answer (writes `leagues.json` only) |

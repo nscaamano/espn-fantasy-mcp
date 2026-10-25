@@ -54,9 +54,12 @@ If the team id is wrong, the error message lists every team in the league with i
 | --- | --- |
 | `list_leagues` | your leagues with alias, scoring format, waiver type and roster shape |
 | `get_league_settings` | scoring, roster slots, waivers and FAAB left, lineup lock, trades, playoffs, standings, plus `missingRules` and `conflicts` |
-| `get_my_roster` | starters, bench and IR with injury status, bye, this week's game (opponent, kickoff), projected and actual points, lock state |
+| `get_my_roster` | starters, bench and IR with injury status and when ESPN last had news on the player, bye, this week's game (opponent, kickoff), projected and actual points, lock state |
 | `get_matchup` | both starting lineups, scores and projected totals |
-| `get_free_agents` | best available at a position by projection, free agent vs waivers |
+| `get_scoreboard` | your matchup in every league in one call; a league that can't be read is listed separately |
+| `get_teams` | every team in a league: record, points, seed, waiver rank, FAAB left |
+| `get_team_roster` | any team's roster, same shape as `get_my_roster` |
+| `get_free_agents` | best available at a position by this week's or the season's projection, free agent vs waivers |
 | `get_recent_activity` | adds, drops, waiver claims with FAAB bids, trades |
 | `get_pending_claims` | your queued waiver claims: add, drop, bid and when they process |
 | `set_league_rule` | saves a rule you confirmed to `leagues.json` (never writes to ESPN) |
