@@ -1,8 +1,13 @@
 # Status
 
-Last updated: 2026-10-21 · Design and specs: [docs/design.md](docs/design.md)
+Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
 
-**Next session:** the step 4 done-checks: a real Saturday lineup check and a Tuesday waiver run. Also the live game-day check below, during any game window.
+**Next session**, in order:
+
+1. **Finish deploy-on-push for the hosted server.** The hosted copy should deploy from `main` only after CI passes. The repo side is done (CI is green); what's left is on the host. See the private runbook, which isn't in git, so copy it to the new machine.
+2. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves. On a game day, also do the live game-day check below.
+3. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
+4. **Add a network retry to espn-client** (see open questions). It's small and prevents the CDN failure seen on 2026-10-14.
 
 ## Done
 
@@ -21,7 +26,6 @@ Last updated: 2026-10-21 · Design and specs: [docs/design.md](docs/design.md)
   - [x] `.mcp.json` for Claude Code; README config for Claude Desktop, Cursor, VS Code, Codex CLI and Gemini CLI.
   - [x] 9 tests over an in-memory client. A live stdio run launched from an unrelated cwd returned every tool's data for all three leagues.
   - [x] Verified 2026-10-08: "show my superflex roster" in Claude Code returned the right starters, bench and IR, and the tools work in the MCP Inspector (CLI mode).
-
 - [x] **`get_pending_claims` tool** (2026-10-13). The user's queued claims from `view=mPendingTransactions`: add, drop (with the slot it leaves), bid (null in priority leagues), `proposedAt` and `processesAt`. Names come from one player-card request.
   - `memberId` is never modeled in espn-client, so it can't reach output. The tests check this, plus the empty case.
   - Only the user's own team's claims are returned; service filters by `myTeamId` in case ESPN ever sends others.
@@ -30,7 +34,6 @@ Last updated: 2026-10-21 · Design and specs: [docs/design.md](docs/design.md)
   - Fixture `pending_transactions.json` was recorded live and scrubbed (see the fixtures README).
   - Verified live: two claims in the priority league, one $5 FAAB claim, and an empty list in the third league.
 - [x] **WSL timestamp fix** in `apps/mcp/src/load.ts`: the loader now detects changes to `leagues.json`/`.env` by content hash, not mtime and size. Linux's coarse mtime made a same-size edit within a few ms look unchanged; this failed a test on WSL but not macOS.
-
 - [x] **Remote HTTP mode** (2026-10-16). `pnpm start` serves the same tools and prompts over Streamable HTTP, behind a shared-secret token (in the path or as a bearer header) with an unauthenticated `/health`.
   - `LEAGUES_JSON` seeds `LEAGUES_CONFIG` on first start.
   - Verified on a hosted deployment: live ESPN reads work from a cloud host, and claude.ai connects as a custom connector.
@@ -66,7 +69,6 @@ Last updated: 2026-10-21 · Design and specs: [docs/design.md](docs/design.md)
 
 - **OAuth for the HTTP mode.** A token in the URL is simple but weaker. claude.ai connectors support OAuth, which would allow per-device revocation and avoid long-lived secrets in URLs.
 - **Retry on network errors.** On 2026-10-14, one of ESPN's CDN addresses failed intermittently. Node's `fetch` only tried that first address, so every call failed for a few minutes. One retry on connect errors in espn-client would ride that out.
-
 - **Rest-of-season projections.** ESPN returns a stat entry with `statSplitTypeId: 3`, season period, projected source, alongside the season projection. It may be rest-of-season; unverified. Check it against ESPN's ROS rankings before building trades.
 - **Free-agent depth.** `getFreeAgents` pulls ESPN's top 50 by % rostered, then re-sorts by projection, so a low-rostered breakout outside the top 50 can be missed. Consider paging, or ESPN's projection sort filter.
 - **Waiver process hour.** `acquisitionSettings.waiverProcessHour` is 11 in all three leagues, but it isn't a clock hour in UTC or Eastern time. Every pending claim on 2026-10-13 had `processDate` 07:00 UTC (Wed 3:00 AM ET). `status.waiverProcessStatus` (past runs, keyed by timestamp) shows runs between 07:00 and 08:00 UTC on Wed and some Thu/Fri/Sat/Sun. `status.waiverLastExecutionDate` was Tue 07:24–07:52 UTC, a day not in `waiverProcessDays`. Meaning of 11 unknown. Use a claim's `processesAt` for timing. `get_league_settings` still passes `processHour` through raw; consider replacing it with the last and next run times from `status`.

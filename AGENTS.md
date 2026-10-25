@@ -20,9 +20,15 @@ pnpm install && pnpm build && pnpm test
 
 If `corepack enable` fails on permissions, use `npm i -g pnpm@11` instead.
 
-`.env` (ESPN cookies) and `leagues.json` (league ids, team ids, stored rules) are gitignored, so a clone doesn't have them. Either copy both from the other machine, or recreate them from `.env.example` and `leagues.example.json` following the README. Never ask the user to paste cookie values into chat: they edit `.env` themselves. Then run `pnpm smoke` to confirm live access.
+Some files never travel through git, so copy them from the other machine by hand (USB, password manager), never through chat or a commit:
 
-The repo's `.mcp.json` launches `apps/mcp/dist/index.js`, so build before starting a Claude Code session there, and approve the `espn-fantasy` server when asked.
+- `.env`: ESPN cookies.
+- `leagues.json`: league ids, team ids, stored rules.
+- Any private notes: the build plan, architecture notes, `*.private.md` runbooks. In the new clone, add their names and `*.private.md` to `.git/info/exclude` first.
+
+`.env` and `leagues.json` are gitignored, so a clone doesn't have them. Either copy both from the other machine, or recreate them from `.env.example` and `leagues.example.json` following the README. Never ask the user to paste cookie values into chat: they edit `.env` themselves. Then run `pnpm smoke` to confirm live access.
+
+The repo's `.mcp.json` launches `apps/mcp/dist/index.js`, so build before starting a Claude Code session there, and approve the `espn-fantasy` server when asked. A session that's already running keeps the old build after `pnpm build`, so reconnect it with `/mcp` → Reconnect to pick up changes. New skills only load when a session starts.
 
 ## Commands
 
