@@ -10,7 +10,7 @@ packages/
   core/          zod schemas, leagues.json config, league rules discovery, domain functions
 apps/
   mcp/           the MCP server (stdio)
-skills/          weekly-check and waivers workflows (Agent Skills; also served as MCP prompts)
+skills/          weekly-check, waivers and scoreboard workflows (Agent Skills; also served as MCP prompts)
 scripts/
   smoke.ts                 live check against your leagues
   port_espn_constants.py   regenerates espn-client/src/constants.ts from espn-api
@@ -65,16 +65,17 @@ If the team id is wrong, the error message lists every team in the league with i
 
 ### Workflows: skills and prompts
 
-The judgment lives in two workflows in `skills/`. Each is a `SKILL.md` in the [Agent Skills](https://agentskills.io) format:
+The judgment lives in workflows in `skills/`. Each is a `SKILL.md` in the [Agent Skills](https://agentskills.io) format:
 
 - **weekly-check:** flags injured, questionable, bye-week and zero-projection starters, checks the news, and gives start/sit moves per league. Run it before Thursday's game and again on Saturday or Sunday morning.
 - **waivers:** finds roster holes, ranks free agents by fit, and gives FAAB bids or claim order with a named drop for every claim. Run it Monday night or Tuesday, before claims process.
+- **scoreboard:** every league's matchup on one screen: a summary table with each side's score, top three scorers and projection, then each league's starters slot by slot. It shows status only, without advice. Use it during or after game windows.
 
 How to run them:
 
-- **Claude Code:** sees them automatically through symlinks in `.claude/skills/`. Ask for "a weekly check" or "waiver run", or invoke `/weekly-check` or `/waivers`.
+- **Claude Code:** sees them automatically through symlinks in `.claude/skills/`. Ask for "a weekly check", "waiver run" or "my scores", or invoke `/weekly-check`, `/waivers` or `/scoreboard`.
 - **Other skills-capable clients:** point them at `skills/`.
-- **Clients without skills:** use the MCP prompts `weekly_check` and `waivers`, generated from the same files. Each takes an optional `league` argument.
+- **Clients without skills:** use the MCP prompts `weekly_check`, `waivers` and `scoreboard`, generated from the same files. Each takes an optional `league` argument.
 
 Injury news needs the assistant's own web search; without it, the workflows say so and fall back to ESPN's tags.
 

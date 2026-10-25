@@ -20,7 +20,7 @@ packages/
   core/          zod schemas + domain functions + league rules
 apps/
   mcp/           McpServer (stdio): tools over core
-skills/          weekly-check, waivers, trades SKILL.md files (step 4+)
+skills/          weekly-check, waivers, scoreboard, trades SKILL.md files (step 4+)
 ```
 
 - **Why TypeScript rather than wrapping the Python espn-api:**

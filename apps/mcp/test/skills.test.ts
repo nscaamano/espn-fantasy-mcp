@@ -27,8 +27,8 @@ async function connect() {
 }
 
 describe("skills/", () => {
-  it("has the weekly-check and waivers workflows", () => {
-    expect(skills.map((s) => s.name)).toEqual(["waivers", "weekly-check"]);
+  it("has the scoreboard, waivers and weekly-check workflows", () => {
+    expect(skills.map((s) => s.name)).toEqual(["scoreboard", "waivers", "weekly-check"]);
     for (const s of skills) {
       expect(s.description.length).toBeGreaterThan(50);
       expect(s.body).not.toMatch(/^---/);
@@ -73,7 +73,7 @@ describe("parseSkill", () => {
 describe("MCP prompts", () => {
   it("serves each skill as a prompt with an optional league argument", async () => {
     const { prompts } = await (await connect()).listPrompts();
-    expect(prompts.map((p) => p.name).sort()).toEqual(["waivers", "weekly_check"]);
+    expect(prompts.map((p) => p.name).sort()).toEqual(["scoreboard", "waivers", "weekly_check"]);
     const weekly = prompts.find((p) => p.name === "weekly_check")!;
     expect(weekly.title).toBe("Weekly lineup check");
     expect(weekly.arguments).toEqual([
