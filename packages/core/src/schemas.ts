@@ -61,6 +61,12 @@ export const Player = z.object({
   projectedPoints: z.number().nullable(),
   actualPoints: z.number().nullable(),
   percentRostered: z.number().nullable(),
+  /**
+   * When ESPN last posted news on the player (ISO, UTC). A status older than the
+   * latest practice report or inactives may be stale. Null if ESPN didn't send
+   * it: rosters and free agents have it, matchups don't (checked live, 2026).
+   */
+  lastNewsDate: z.string().nullable(),
   /** Starting slots the player can fill (BE and IR omitted). */
   eligibleSlots: z.array(z.string()),
 });
@@ -84,6 +90,8 @@ export const Roster = z.object({
   ir: z.array(RosterSlot),
   projectedTotal: z.number(),
   actualTotal: z.number(),
+  /** When this was read from ESPN (ISO, UTC). Re-fetch rather than reuse an old result. */
+  asOf: z.string(),
 });
 export type Roster = z.infer<typeof Roster>;
 
@@ -225,7 +233,19 @@ export const Matchup = z.object({
   me: MatchupSide,
   /** Null on a bye. */
   opponent: MatchupSide.nullable(),
+  /** When this was read from ESPN (ISO, UTC). Re-fetch rather than reuse an old result. */
+  asOf: z.string(),
 });
+
+/** Every league's matchup in one call. A league that fails is listed in `errors`. */
+export const Scoreboard = z.object({
+  matchups: z.array(Matchup),
+  errors: z.array(z.object({ league: z.string(), error: z.string() })),
+});
+export type Scoreboard = z.infer<typeof Scoreboard>;
+
+export const FreeAgentSort = z.enum(["week", "season"]);
+export type FreeAgentSort = z.infer<typeof FreeAgentSort>;
 export type Matchup = z.infer<typeof Matchup>;
 
 export const FreeAgent = Player.extend({

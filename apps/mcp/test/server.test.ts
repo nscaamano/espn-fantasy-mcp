@@ -49,6 +49,9 @@ describe("MCP server", () => {
       "get_my_roster",
       "get_pending_claims",
       "get_recent_activity",
+      "get_scoreboard",
+      "get_team_roster",
+      "get_teams",
       "list_leagues",
       "set_league_rule",
     ]);
@@ -75,6 +78,35 @@ describe("MCP server", () => {
     const { call } = await connect();
     const res = await call("get_my_roster", { league: "test", week: 1 });
     expect(res.structuredContent).toMatchObject({ teamId: 1, teamName: "Goin' HAM Newton" });
+  });
+
+  it("returns every league in get_scoreboard, with unreadable leagues as errors", async () => {
+    const { call } = await connect();
+    // Team 1 has no matchup in the week 13 fixture.
+    const res = await call("get_scoreboard", { week: 13 });
+    expect(res.isError).toBeFalsy();
+    expect(res.structuredContent).toMatchObject({
+      matchups: [],
+      errors: [{ league: "test", error: expect.stringMatching(/No matchup/) }],
+    });
+  });
+
+  it("lists teams and returns another team's roster", async () => {
+    const { call } = await connect();
+    const teams = await call("get_teams", { league: "test" });
+    const list = (teams.structuredContent as { teams: { id: number; isMine: boolean }[] }).teams;
+    const other = list.find((t) => !t.isMine)!;
+    const roster = await call("get_team_roster", { league: "test", teamId: other.id, week: 1 });
+    expect(roster.isError).toBeFalsy();
+    expect(roster.structuredContent).toMatchObject({ teamId: other.id, asOf: expect.any(String) });
+  });
+
+  it("accepts a season sort for free agents and rejects an unknown one", async () => {
+    const { call } = await connect();
+    const ok = await call("get_free_agents", { league: "test", position: "WR", sort: "season" });
+    expect(ok.isError).toBeFalsy();
+    const bad = await call("get_free_agents", { league: "test", sort: "vibes" });
+    expect(bad.isError).toBe(true);
   });
 
   it("wraps free agents and applies the default limit", async () => {

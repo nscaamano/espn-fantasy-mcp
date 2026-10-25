@@ -85,6 +85,7 @@ describe("FantasyService", () => {
 
   it("returns my matchup with both starting lineups", async () => {
     const m = await service(11).svc.getMatchup("test", 13);
+    expect(m.asOf).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(m.week).toBe(13);
     expect(m.me).toMatchObject({ teamId: 11, score: 128 });
     expect(m.opponent).toMatchObject({ teamId: 2, score: 151.8 });
@@ -214,6 +215,42 @@ describe("FantasyService.getPendingClaims", () => {
       true,
     );
     expect(claim).toMatchObject({ bid: 5, add: null, drop: null, processesAt: null });
+  });
+});
+
+describe("FantasyService across leagues and teams", () => {
+  it("returns every league's matchup, and lists a league that fails instead of throwing", async () => {
+    const { fetch } = fixtureFetch();
+    const svc = new FantasyService(new EspnClient({ fetch }), {
+      leagues: [
+        { alias: "one", leagueId: 1, year: 2018, myTeamId: 11, rules: {} },
+        // Team 99 has no matchup in the fixture, like a bye week.
+        { alias: "two", leagueId: 2, year: 2018, myTeamId: 99, rules: {} },
+      ],
+    });
+    const board = await svc.getScoreboard(13);
+    expect(board.matchups.map((m) => m.league)).toEqual(["one"]);
+    expect(board.matchups[0]!.me.teamId).toBe(11);
+    expect(board.errors).toEqual([{ league: "two", error: expect.stringMatching(/No matchup/) }]);
+  });
+
+  it("lists the league's teams with mine marked", async () => {
+    const teams = await service(2).svc.getTeams("test");
+    expect(teams).toHaveLength(10);
+    expect(teams.filter((t) => t.isMine).map((t) => t.id)).toEqual([2]);
+  });
+
+  it("sorts free agents by season projection when asked", async () => {
+    const fas = await service().svc.getFreeAgents("test", "WR", 8, 1, "season");
+    const season = fas.map((f) => f.seasonProjectedPoints ?? -1);
+    expect(season).toEqual([...season].sort((a, b) => b - a));
+  });
+
+  it("carries lastNewsDate and a read time on rosters", async () => {
+    const roster = await service(1).svc.getMyRoster("test", 1);
+    expect(roster.asOf).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    const all = [...roster.starters, ...roster.bench];
+    expect(all.some((s) => s.player.lastNewsDate !== null)).toBe(true);
   });
 });
 

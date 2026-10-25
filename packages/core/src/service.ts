@@ -30,7 +30,10 @@ import {
   PendingClaim,
   Roster,
   RuleKey,
+  Scoreboard,
   Transaction,
+  type FreeAgentSort,
+  type Team,
   ruleValueSchema,
   type MatchupSide,
   type RuleSource,
@@ -127,7 +130,13 @@ export class FantasyService {
       teamName: this.teamName(settings, teamId),
       week: roster.week,
       ...splitLineup(roster.entries, schedule, roster.week),
+      asOf: this.now().toISOString(),
     });
+  }
+
+  /** Every team in a league: record, points, playoff seed, waiver rank and FAAB left. */
+  async getTeams(league: string): Promise<Team[]> {
+    return (await this.getLeagueSettings(league)).teams;
   }
 
   /** My matchup for a week: both starting lineups and projected/actual totals. */
@@ -162,18 +171,40 @@ export class FantasyService {
       isPlayoff: mine.playoffTier !== "NONE",
       me: side(me!),
       opponent: opp ? side(opp) : null,
+      asOf: this.now().toISOString(),
     });
   }
 
   /**
-   * Top available players at a position by this week's projection. ESPN only
-   * sorts by % rostered, so this fetches a wider pool and re-sorts it.
+   * My matchup in every league, fetched in parallel. A league that fails (a bye
+   * week, an ESPN error) goes into `errors` instead of failing the rest.
+   */
+  async getScoreboard(week?: number): Promise<Scoreboard> {
+    const results = await Promise.allSettled(
+      this.config.leagues.map((cfg) => this.getMatchup(cfg.alias, week)),
+    );
+    const scoreboard: Scoreboard = { matchups: [], errors: [] };
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled") scoreboard.matchups.push(r.value);
+      else {
+        const error = r.reason instanceof Error ? r.reason.message : String(r.reason);
+        scoreboard.errors.push({ league: this.config.leagues[i]!.alias, error });
+      }
+    });
+    return scoreboard;
+  }
+
+  /**
+   * Top available players at a position by this week's projection, or by
+   * ESPN's full-season projection with `sort: "season"`. ESPN only sorts by
+   * % rostered, so this fetches a wider pool and re-sorts it.
    */
   async getFreeAgents(
     league: string,
     position: string | undefined,
     limit = 15,
     week?: number,
+    sort: FreeAgentSort = "week",
   ): Promise<FreeAgent[]> {
     const cfg = findLeague(this.config, league);
     const pool = Math.max(50, limit * 3);
@@ -185,11 +216,12 @@ export class FantasyService {
     ]);
     return agents
       .map((fa) => FreeAgent.parse(toFreeAgent(fa, schedule, w)))
-      .sort(
-        (a, b) =>
-          (b.projectedPoints ?? -1) - (a.projectedPoints ?? -1) ||
-          (b.percentRostered ?? 0) - (a.percentRostered ?? 0),
-      )
+      .sort((a, b) => {
+        const key = sort === "season" ? "seasonProjectedPoints" : "projectedPoints";
+        return (
+          (b[key] ?? -1) - (a[key] ?? -1) || (b.percentRostered ?? 0) - (a.percentRostered ?? 0)
+        );
+      })
       .slice(0, limit);
   }
 

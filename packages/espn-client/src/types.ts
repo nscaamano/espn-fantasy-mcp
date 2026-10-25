@@ -13,6 +13,8 @@ export interface EspnPlayer {
   /** ESPN's raw injury status, e.g. ACTIVE, QUESTIONABLE, INJURY_RESERVE; null when absent. */
   injuryStatus: string | null;
   injured: boolean;
+  /** When ESPN last posted news on the player (ISO, UTC); null if never. */
+  lastNewsDate: string | null;
   percentOwned: number | null;
   percentStarted: number | null;
   percentChange: number | null;

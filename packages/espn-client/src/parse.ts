@@ -79,8 +79,11 @@ export function parsePlayer(
     eligibleSlots: (raw.eligibleSlots ?? []).map(slotLabel),
     proTeamId,
     proTeam: PRO_TEAM_MAP[proTeamId] ?? "None",
+    // The player's own status is the real one. In 2026 the roster entry's
+    // injuryStatus reads NORMAL for everyone (checked live), so it's only a fallback.
     injuryStatus: raw.injuryStatus ?? entryInjuryStatus ?? null,
     injured: raw.injured ?? false,
+    lastNewsDate: raw.lastNewsDate ? new Date(raw.lastNewsDate).toISOString() : null,
     percentOwned: ownership?.percentOwned !== undefined ? round(ownership.percentOwned, 1) : null,
     percentStarted:
       ownership?.percentStarted !== undefined ? round(ownership.percentStarted, 1) : null,

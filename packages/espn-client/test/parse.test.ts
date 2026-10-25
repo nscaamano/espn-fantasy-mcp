@@ -129,6 +129,13 @@ describe("parseFreeAgents", () => {
       player: { name: "Josh Gordon", injuryStatus: "OUT", percentOwned: 76.5 },
     });
   });
+
+  it("converts lastNewsDate from epoch ms to ISO", () => {
+    const players = parseFreeAgents(fixture<RawLeague>("free_agents.json"), 2018, 1);
+    const dated = players.filter((p) => p.player.lastNewsDate !== null);
+    expect(dated.length).toBeGreaterThan(0);
+    for (const p of dated) expect(p.player.lastNewsDate).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+  });
 });
 
 describe("parseActivity", () => {

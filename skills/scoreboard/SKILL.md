@@ -9,8 +9,8 @@ Uses the espn-fantasy MCP tools. ESPN's app shows one matchup at a time; this pu
 
 ## 1. Gather
 
-1. **`list_leagues`** for the leagues and their names. Use only the league the user named, if any.
-2. **`get_matchup`** for every league in parallel, for the current week unless the user named one.
+1. **`get_scoreboard`**: every league's matchup in one call, for the current week unless the user named one. If the user named one league, use `get_matchup` for just that league instead. A league in `errors` (usually a bye week) gets a one-line note instead of a row.
+2. **`list_leagues`** for each league's display name, since the matchups carry only the alias.
 
 From each matchup, use for both sides:
 - `score` (points so far) and `projected` (ESPN's live projected final).
@@ -44,7 +44,7 @@ A table per league, headed with the league name:
 - Pair starters by slot, in the league's slot order, both sides on one row.
 - Points are actual / projected, with "—" for players who haven't played.
 - Mark players who haven't kicked off with their window: (TNF), (SNF), (MNF), or the day and time for anything else. Mark injury tags after the name: Q, D, O.
-- Keep names short: last name, or first initial plus last name if two players share one.
+- Keep names short: last name without suffixes (Jr., Sr., III), or first initial plus last name if two players share one. Team defenses keep their team name ("Broncos D/ST").
 
 ## 4. One line per league
 

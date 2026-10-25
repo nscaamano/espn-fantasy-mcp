@@ -72,6 +72,7 @@ export function toPlayer(p: EspnPlayer, schedule: ProSchedule, week: number): Pl
     projectedPoints: p.week.projected,
     actualPoints: p.week.actual,
     percentRostered: p.percentOwned,
+    lastNewsDate: p.lastNewsDate,
     eligibleSlots: p.eligibleSlots.filter((s) => !NON_STARTING.has(s)),
   };
 }

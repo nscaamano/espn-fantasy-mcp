@@ -6,13 +6,16 @@
 import { readFileSync } from "node:fs";
 import {
   FreeAgent,
+  FreeAgentSort,
   League,
   LeagueSettings,
   Matchup,
   PendingClaim,
   Roster,
   RuleKey,
+  Scoreboard,
   StoredRule,
+  Team,
   Transaction,
   type FantasyService,
 } from "@espn-fantasy-mcp/core";
@@ -39,6 +42,10 @@ const week = z
   .describe("NFL week (ESPN scoring period). Defaults to the league's current week.");
 
 const READ = { readOnlyHint: true, openWorldHint: true } as const;
+
+const AS_OF = "`asOf` is when the data was read; call again rather than reuse an old result.";
+const FRESHNESS = `Each player has \`lastNewsDate\`, when ESPN last posted news on him: a tag older than the latest practice report or inactives may be stale, so check the news. ${AS_OF}`;
+const MATCHUP_FRESHNESS = `ESPN's matchup data has no \`lastNewsDate\` (it's null here); use get_my_roster when injury freshness matters. ${AS_OF}`;
 
 function result<T extends Record<string, unknown>>(data: T) {
   return {
@@ -96,8 +103,7 @@ export function createServer(
     "get_my_roster",
     {
       title: "My roster",
-      description:
-        "The user's roster for a week: starters by lineup slot, bench, and IR. Each player has position, NFL team, injury status, bye week, projected and actual points for the week, the slots they're eligible for, and `locked` (their game has started, so they can't be moved).",
+      description: `The user's roster for a week: starters by lineup slot, bench, and IR. Each player has position, NFL team, injury status, bye week, this week's game and kickoff, projected and actual points for the week, the slots they're eligible for, and \`locked\` (their game has started, so they can't be moved). ${FRESHNESS}`,
       inputSchema: z.object({ league, week }),
       outputSchema: Roster,
       annotations: READ,
@@ -109,8 +115,7 @@ export function createServer(
     "get_matchup",
     {
       title: "My matchup",
-      description:
-        "The user's head-to-head matchup for a week: both teams' starting lineups with per-player projections, injury status and lock state, plus scores and projected totals. `opponent` is null on a bye.",
+      description: `The user's head-to-head matchup in one league for a week: both teams' starting lineups with per-player points, projections, injury status and lock state, plus scores and projected totals. \`opponent\` is null on a bye. For every league at once, use get_scoreboard. ${MATCHUP_FRESHNESS}`,
       inputSchema: z.object({ league, week }),
       outputSchema: Matchup,
       annotations: READ,
@@ -119,11 +124,54 @@ export function createServer(
   );
 
   server.registerTool(
+    "get_scoreboard",
+    {
+      title: "All my matchups",
+      description: `The user's matchup in every league at once, in one call: the same shape as get_matchup, one entry per league. A league that can't be read (a bye week, an ESPN error) is listed in \`errors\` while the rest still return. ${MATCHUP_FRESHNESS}`,
+      inputSchema: z.object({
+        week: week.describe("NFL week. Defaults to each league's current week."),
+      }),
+      outputSchema: Scoreboard,
+      annotations: READ,
+    },
+    async (args) => result(await service().getScoreboard(args.week)),
+  );
+
+  server.registerTool(
+    "get_teams",
+    {
+      title: "League teams",
+      description:
+        "Every team in a league: id, name, managers, record, points for and against, playoff seed, waiver rank and FAAB left. `isMine` marks the user's team. Pass a team's `id` to get_team_roster.",
+      inputSchema: z.object({ league }),
+      outputSchema: z.object({ league: z.string(), teams: z.array(Team) }),
+      annotations: READ,
+    },
+    async (args) => result({ league: args.league, teams: await service().getTeams(args.league) }),
+  );
+
+  server.registerTool(
+    "get_team_roster",
+    {
+      title: "Another team's roster",
+      description: `Any team's roster for a week, in the same shape as get_my_roster. Use it to scout trade partners or teams that may compete for a waiver claim. ${FRESHNESS}`,
+      inputSchema: z.object({
+        league,
+        teamId: z.number().int().positive().describe("Team id from get_teams."),
+        week,
+      }),
+      outputSchema: Roster,
+      annotations: READ,
+    },
+    async (args) => result(await service().getTeamRoster(args.league, args.teamId, args.week)),
+  );
+
+  server.registerTool(
     "get_free_agents",
     {
       title: "Free agents",
       description:
-        "The best available players in a league, sorted by projected points for the week. `status` is FREE_AGENT (can be added now) or WAIVERS (needs a waiver claim). Each player also has % rostered and its recent change, injury status, bye week, and season points. The pool is the most-rostered available players (at least 50), so a barely rostered breakout can be missing.",
+        "The best available players in a league, sorted by projected points for the week, or by ESPN's full-season projection with `sort: \"season\"` (better for stash candidates; it's the whole season's projection, not rest of season). `status` is FREE_AGENT (can be added now) or WAIVERS (needs a waiver claim). Each player also has % rostered and its recent change, injury status, bye week, and season points. The pool is the most-rostered available players (at least 50), so a barely rostered breakout can be missing.",
       inputSchema: z.object({
         league,
         position: z
@@ -140,6 +188,9 @@ export function createServer(
           .default(15)
           .describe("How many players to return (1–50, default 15)."),
         week,
+        sort: FreeAgentSort.default("week").describe(
+          '"week" ranks by this week\'s projection (default); "season" by the full-season projection.',
+        ),
       }),
       outputSchema: z.object({
         league: z.string(),
@@ -157,6 +208,7 @@ export function createServer(
           args.position,
           args.limit,
           args.week,
+          args.sort,
         ),
       }),
   );

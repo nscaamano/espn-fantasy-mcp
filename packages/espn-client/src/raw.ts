@@ -19,6 +19,8 @@ export interface RawPlayer {
   proTeamId?: number;
   injuryStatus?: string;
   injured?: boolean;
+  /** Epoch ms of the player's latest ESPN news item. */
+  lastNewsDate?: number;
   ownership?: {
     percentOwned?: number;
     percentStarted?: number;
