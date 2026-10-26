@@ -92,10 +92,12 @@ After a few weeks of use from the Claude iPhone app, the assistant listed the to
   - Fix mode fills my hole from another team's surplus.
   - Opportunity mode covers consolidation, buy-low and sell-high.
   - Every proposal gets a fairness check.
-- [ ] **Publish to npm.** Ready to publish, not yet published (needs `npm login`).
-  - [x] Renamed to `@nscaamano/espn-fantasy-client`, `@nscaamano/espn-fantasy-core` and `@nscaamano/espn-fantasy-mcp` (2026-10-25).
-  - [x] Publish metadata, READMEs, and a `prepack` that copies LICENSE (plus THIRD_PARTY_NOTICES for the client). `pnpm pack` checked: only dist, src and license files go in, and `workspace:*` becomes a real version.
-  - [ ] `pnpm publish` the client, then core. Both are 0.1.0. A private app needs core from npm to deploy.
+- [x] **Publish to npm** (2026-10-25). `@nscaamano/espn-fantasy-client@0.1.0` and `@nscaamano/espn-fantasy-core@0.1.0` are live.
+  - Publishing needs 2FA on the npm account. Run `pnpm publish` from each package folder, client first; npm asks for approval in the browser.
+  - New packages also get a `0.0.0-stage` placeholder version from npm's staged-publishing system. It's harmless; `latest` points to the real version.
+  - Right after a publish, the registry can lag a minute or two, and a retry then fails with "cannot publish over 0.1.0". That error means the publish worked.
+  - When a tool's output changes, bump and publish core, so apps typed against it stay in sync.
+  - [ ] Optional: npm trusted publishing from GitHub Actions (OIDC, with `npm stage publish`), so a version tag publishes without a token.
   - [ ] The MCP server with a `bin` for `npx`. It needs to ship `skills/` inside the package first.
 
 ## Open questions
