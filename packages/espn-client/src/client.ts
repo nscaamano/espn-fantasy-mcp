@@ -37,9 +37,17 @@ export interface EspnClientOptions {
   /** `SWID` cookie, including braces. Required for private leagues. */
   swid?: string;
   baseUrl?: string;
+  /** Per attempt. Default 20 s. */
   timeoutMs?: number;
+  /** Extra attempts after a network failure or a 502/503/504. Default 1. */
+  retries?: number;
+  /** Pause before a retry. Default 500 ms. */
+  retryDelayMs?: number;
   fetch?: typeof fetch;
 }
+
+/** Gateway errors that usually clear on a second try. */
+const RETRY_STATUSES = new Set([502, 503, 504]);
 
 interface LeagueGetOptions {
   views?: string[];
@@ -53,12 +61,16 @@ export class EspnClient {
   private readonly baseUrl: string;
   private readonly cookie: string | undefined;
   private readonly timeoutMs: number;
+  private readonly retries: number;
+  private readonly retryDelayMs: number;
   private readonly fetchImpl: typeof fetch;
   private readonly proTeamsByYear = new Map<number, Promise<EspnProTeam[]>>();
 
   constructor(options: EspnClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.timeoutMs = options.timeoutMs ?? 20_000;
+    this.retries = options.retries ?? 1;
+    this.retryDelayMs = options.retryDelayMs ?? 500;
     this.fetchImpl = options.fetch ?? fetch;
     const cookies = [
       options.espnS2 && `espn_s2=${options.espnS2}`,
@@ -313,17 +325,40 @@ export class EspnClient {
     }
   }
 
+  /**
+   * One retry rides out a flaky CDN address or a gateway blip: on 2026-10-14 one
+   * of ESPN's addresses failed for minutes while others worked. Auth and 4xx
+   * errors aren't retried.
+   */
+  private async fetchWithRetry(url: string, headers: Record<string, string>): Promise<Response> {
+    for (let attempt = 0; ; attempt++) {
+      const last = attempt >= this.retries;
+      let res: Response;
+      try {
+        res = await this.fetchImpl(url, { headers, signal: AbortSignal.timeout(this.timeoutMs) });
+      } catch (err) {
+        if (last) {
+          throw new EspnHttpError(
+            `ESPN request failed: ${describeFetchError(err)}`,
+            undefined,
+            url,
+          );
+        }
+        await sleep(this.retryDelayMs);
+        continue;
+      }
+      if (last || !RETRY_STATUSES.has(res.status)) return res;
+      await res.body?.cancel();
+      await sleep(this.retryDelayMs);
+    }
+  }
+
   private async request<T>(url: string, filter?: unknown): Promise<T> {
     const headers: Record<string, string> = { Accept: "application/json" };
     if (this.cookie) headers.Cookie = this.cookie;
     if (filter !== undefined) headers["x-fantasy-filter"] = JSON.stringify(filter);
 
-    let res: Response;
-    try {
-      res = await this.fetchImpl(url, { headers, signal: AbortSignal.timeout(this.timeoutMs) });
-    } catch (err) {
-      throw new EspnHttpError(`ESPN request failed: ${(err as Error).message}`, undefined, url);
-    }
+    const res = await this.fetchWithRetry(url, headers);
 
     if (res.status === 401 || res.status === 403) {
       const hint = this.cookie
@@ -349,4 +384,14 @@ export class EspnClient {
       );
     }
   }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Node's fetch says only "fetch failed"; the useful part (ECONNRESET, ENOTFOUND) is in `cause`. */
+function describeFetchError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const cause = err.cause as { code?: string; message?: string } | undefined;
+  const detail = cause?.code ?? cause?.message;
+  return detail && !err.message.includes(detail) ? `${err.message} (${detail})` : err.message;
 }

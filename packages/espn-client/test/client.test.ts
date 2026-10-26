@@ -190,3 +190,57 @@ describe("EspnClient errors", () => {
     await expect(client.getLeagueSettings(1, 2026)).rejects.toThrow(EspnHttpError);
   });
 });
+
+describe("EspnClient retries", () => {
+  /** Serves `steps` in order: an Error is thrown like a network failure, a number is a status. */
+  function scripted(...steps: (number | Error)[]) {
+    let calls = 0;
+    const fetch = (async () => {
+      const step = steps[Math.min(calls++, steps.length - 1)]!;
+      if (step instanceof Error) throw step;
+      return new Response(step === 200 ? JSON.stringify({ id: 1 }) : "{}", { status: step });
+    }) as unknown as typeof globalThis.fetch;
+    return { fetch, calls: () => calls };
+  }
+  const connReset = () =>
+    Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNRESET" } });
+
+  it("retries once after a network failure", async () => {
+    const s = scripted(connReset(), 200);
+    const client = new EspnClient({ fetch: s.fetch, retryDelayMs: 0 });
+    await expect(client.getLeagueSettings(1, 2026)).resolves.toBeDefined();
+    expect(s.calls()).toBe(2);
+  });
+
+  it("retries once after a gateway error", async () => {
+    const s = scripted(503, 200);
+    await new EspnClient({ fetch: s.fetch, retryDelayMs: 0 }).getLeagueSettings(1, 2026);
+    expect(s.calls()).toBe(2);
+  });
+
+  it("gives up after the retry, naming the network error code", async () => {
+    const s = scripted(connReset(), connReset(), 200);
+    const client = new EspnClient({ fetch: s.fetch, retryDelayMs: 0 });
+    await expect(client.getLeagueSettings(1, 2026)).rejects.toThrow(
+      /request failed: fetch failed \(ECONNRESET\)/,
+    );
+    expect(s.calls()).toBe(2);
+  });
+
+  it("doesn't retry auth or not-found errors", async () => {
+    for (const status of [401, 404]) {
+      const s = scripted(status, 200);
+      await expect(
+        new EspnClient({ fetch: s.fetch, retryDelayMs: 0 }).getLeagueSettings(1, 2026),
+      ).rejects.toThrow();
+      expect(s.calls()).toBe(1);
+    }
+  });
+
+  it("can be turned off", async () => {
+    const s = scripted(503, 200);
+    const client = new EspnClient({ fetch: s.fetch, retries: 0 });
+    await expect(client.getLeagueSettings(1, 2026)).rejects.toThrow(/HTTP 503/);
+    expect(s.calls()).toBe(1);
+  });
+});
