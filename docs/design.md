@@ -19,8 +19,8 @@ packages/
   espn-client/   thin ESPN client (fetch + cookies), raw → typed
   core/          zod schemas + domain functions + league rules
 apps/
-  mcp/           McpServer (stdio): tools over core
-skills/          weekly-check, waivers, scoreboard, trades SKILL.md files (step 4+)
+  mcp/           McpServer: tools and prompts over core, via stdio or Streamable HTTP
+skills/          weekly-check, waivers and scoreboard SKILL.md files (trades later)
 ```
 
 - **Why TypeScript rather than wrapping the Python espn-api:**
@@ -29,7 +29,7 @@ skills/          weekly-check, waivers, scoreboard, trades SKILL.md files (step 
   - The client is already ported from espn-api and verified against live leagues.
 
   espn-api stays the reference for endpoints, `view` params, headers and ID mappings: port its request shapes, don't reinvent them. If maintaining the TS client ever proves painful, the fallback is a Python sidecar running espn-api.
-- **Packages stay split** so a consumer can depend on `core` (or just `espn-client`) without pulling in the MCP SDK. All three are meant to be published to npm: `espn-client` and `core` as libraries, and the MCP server with a `bin` for `npx`.
+- **Packages stay split** so a consumer can depend on `core` (or just `espn-client`) without pulling in the MCP SDK. `espn-client` and `core` are published to npm as `@nscaamano/espn-fantasy-client` and `@nscaamano/espn-fantasy-core`. The MCP server is next, with a `bin` for `npx`, once it ships its skills inside the package.
 - **Tooling:** pnpm workspaces only; no Nx or Turborepo at this size.
 
 | Layer | Choice |
@@ -138,6 +138,8 @@ The server targets any MCP client, not just Claude: Claude Code, Claude Desktop,
 
 Clients that can't launch a local process, like claude.ai custom connectors and the Claude mobile apps, need the server over HTTP. `serve.ts` (`pnpm start`) runs the same tools and prompts over Streamable HTTP. It works on any Node 24 host behind HTTPS, and the repo stays provider-neutral.
 
+**App clients.** The HTTP endpoint also serves non-AI clients: an app backend can call the tools directly with the MCP client SDK and type the results with core's schemas. One server then owns the ESPN cookies, `leagues.json` and stored rules, so an assistant and an app never diverge. The token must stay server-side in such an app, and the app needs its own login in front of it.
+
 - **Stateless:** each request gets a fresh server instance from the SDK's `createMcpHandler`, so there's no session state to lose on a restart.
 - **Access is a shared secret** (`MCP_AUTH_TOKEN`, at least 32 characters). Clients send it in the path (`/mcp/<token>`) when they only take a URL, or as a bearer header.
   - Comparison is constant-time.
@@ -203,7 +205,7 @@ For when a lineup hole can't be filled from waivers: scan the other teams and pr
 
 Opportunity mode still applies the fairness check: the leverage is their urgent need, not a lopsided deal. Lopsided offers get rejected or vetoed and sour future trades.
 
-**New reads** (still read-only): `get_teams` (every team's manager, record, standings, points for, playoff position) and `get_team_roster` (any team's roster, same shape as `get_my_roster`). `getRosters` already fetches all rosters in one request, and core has `getTeamRoster`.
+**Reads it uses** (all exist now, read-only): `get_teams` (every team's manager, record, standings, points for, playoff position) and `get_team_roster` (any team's roster, same shape as `get_my_roster`).
 
 **How it picks trades:**
 

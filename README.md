@@ -1,15 +1,15 @@
 # espn-fantasy-mcp
 
-A read-only [MCP](https://modelcontextprotocol.io) server and TypeScript client for ESPN fantasy football. It reads your rosters, matchups, free agents, league settings and league activity from ESPN's fantasy API, so any MCP-enabled assistant can give lineup and waiver advice without screenshots: Claude Code, Claude Desktop, Cursor, VS Code, Codex CLI, Gemini CLI and others. It never makes moves; you make them in the ESPN app.
+A read-only [MCP](https://modelcontextprotocol.io) server and TypeScript libraries for ESPN fantasy football. It reads your rosters, matchups, free agents, league settings and league activity from ESPN's fantasy API, so any MCP-enabled assistant can give lineup and waiver advice without screenshots: Claude Code, Claude Desktop, Cursor, VS Code, Codex CLI, Gemini CLI and others. It never makes moves; you make them in the ESPN app.
 
-> **Status:** the ESPN client, core library and MCP server work and have been checked against live 2026 leagues. The lineup and waiver workflows are written and being tried on real weeks. See [STATUS.md](STATUS.md) for progress and [docs/design.md](docs/design.md) for the design.
+> **Status:** the ESPN client, core library and MCP server work and have been checked against live 2026 leagues. The server runs locally over stdio or hosted over HTTP. The client and core are on npm. The lineup and waiver workflows are being tried on real weeks. See [STATUS.md](STATUS.md) for progress and [docs/design.md](docs/design.md) for the design.
 
 ```
 packages/
-  espn-client/   thin client for ESPN's undocumented fantasy v3 API (fetch + cookies), raw JSON → typed
-  core/          zod schemas, leagues.json config, league rules discovery, domain functions
+  espn-client/   @nscaamano/espn-fantasy-client: thin client for ESPN's undocumented fantasy v3 API, raw JSON → typed
+  core/          @nscaamano/espn-fantasy-core: zod schemas, leagues.json config, league rules, lineup optimizer, FantasyService
 apps/
-  mcp/           the MCP server (stdio)
+  mcp/           the MCP server: stdio for local clients, Streamable HTTP for hosted ones
 skills/          weekly-check, waivers and scoreboard workflows (Agent Skills; also served as MCP prompts)
 scripts/
   smoke.ts                 live check against your leagues
@@ -160,15 +160,57 @@ Endpoints:
 
 The server holds your ESPN cookies, so treat the token URL like a password: anyone with it can read your leagues. To revoke access, change `MCP_AUTH_TOKEN` and restart. The hosted server keeps its own copy of `leagues.json`, so rules saved through it don't show up in your local copy, and the reverse.
 
+### Calling the tools from your own app
+
+MCP doesn't need an AI model: the tools are plain function calls that return structured JSON. A web or mobile backend can call a hosted server directly with the MCP client SDK, and type the results with the schemas from `@nscaamano/espn-fantasy-core`. One server then holds the ESPN cookies, `leagues.json` and stored rules, and the assistant and the app always see the same data.
+
+```ts
+import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import type { Scoreboard } from "@nscaamano/espn-fantasy-core";
+
+const client = new Client({ name: "my-app", version: "1.0.0" });
+await client.connect(
+  new StreamableHTTPClientTransport(new URL("https://your-host.example/mcp"), {
+    requestInit: { headers: { Authorization: `Bearer ${process.env.MCP_AUTH_TOKEN}` } },
+  }),
+);
+const res = await client.callTool({ name: "get_scoreboard", arguments: {} });
+const scoreboard = res.structuredContent as Scoreboard; // validated by the server against core's schema
+```
+
+Keep the token in server-side code only, never in a browser bundle, and put the app behind its own login.
+
+## Use the libraries
+
+The client and core are on npm, for apps that want to talk to ESPN directly instead of through the server:
+
+```sh
+pnpm add @nscaamano/espn-fantasy-core     # brings @nscaamano/espn-fantasy-client with it
+```
+
+```ts
+import { FantasyService } from "@nscaamano/espn-fantasy-core";
+
+// ESPN_S2 and SWID from the environment; leagues.json from LEAGUES_CONFIG or the nearest one up.
+const service = FantasyService.fromEnv();
+const lineup = await service.getOptimalLineup("my-league-alias");
+```
+
+Server-side only: the ESPN cookies must never reach a browser. Each package has its own README on npm.
+
 ## Commands
 
 | Command | Does |
 | --- | --- |
 | `pnpm build` | Build all packages and the MCP server |
+| `pnpm start` | Run the HTTP server (see Remote hosting) |
 | `pnpm test` | Unit tests on recorded ESPN responses (offline) |
 | `pnpm typecheck` | Type-check packages, tests and scripts |
 | `pnpm lint` / `pnpm format` | ESLint / Prettier |
 | `pnpm smoke [-- --league ppr --week 5 --position RB]` | Live check per league: settings, roster, matchup, top 10 free agents, recent activity |
+| `pnpm audit` | Check dependencies for security advisories; run before releases and deploys |
+
+To publish the libraries: bump the version in both `package.json` files, then run `pnpm publish` in `packages/espn-client` and then `packages/core`. pnpm replaces `workspace:*` with the real version. npm requires 2FA for publishing.
 
 ## League rules
 
