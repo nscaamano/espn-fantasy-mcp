@@ -144,17 +144,23 @@ export function optimizeLineup(roster: Roster, slots: Record<string, number>): O
   const newSlot = new Map<number, string>();
   for (const s of fixed) newSlot.set(s.player.id, s.slot);
   for (const { slot, s } of chosen.values()) newSlot.set(s.player.id, slot);
+  // Who leaves each slot, so a player coming in can say whom he replaces.
+  const leaving = new Map<string, string[]>();
+  for (const s of roster.starters) {
+    if ((newSlot.get(s.player.id) ?? "BE") === s.slot) continue;
+    leaving.set(s.slot, [...(leaving.get(s.slot) ?? []), s.player.name]);
+  }
   const moves: OptimalLineup["moves"] = [];
   for (const s of pool) {
     const to = newSlot.get(s.player.id) ?? "BE";
     if (to === s.slot) continue;
-    const benched = to === "BE";
-    moves.push({
-      player: s.player.name,
-      from: s.slot,
-      to,
-      reason: benched ? (whyOut(s.player) ?? "lower projection") : null,
-    });
+    let reason: string;
+    if (to === "BE") reason = whyOut(s.player) ?? "lower projection";
+    else {
+      const out = leaving.get(to)?.shift();
+      reason = out ? `replaces ${out}` : "fills an empty slot";
+    }
+    moves.push({ player: s.player.name, from: s.slot, to, reason });
   }
   // Benchings first, then who comes in, so each move reads as a swap.
   moves.sort((a, b) => Number(b.to === "BE") - Number(a.to === "BE"));
@@ -188,7 +194,8 @@ export function optimizeLineup(roster: Roster, slots: Record<string, number>): O
         type: "NO_PROJECTION",
         slot,
         player: p.name,
-        detail: "projected at 0 or not projected; ESPN may expect him to sit",
+        detail:
+          "the best eligible player on the roster projects 0, so ESPN may expect him to sit; treat this slot as open",
       });
     }
   }
@@ -198,7 +205,7 @@ export function optimizeLineup(roster: Roster, slots: Record<string, number>): O
         type: "EMPTY_SLOT",
         slot,
         player: null,
-        detail: "no healthy, eligible player on the roster; look at free agents",
+        detail: "no healthy, eligible player on the roster",
       });
     }
   });

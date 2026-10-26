@@ -77,6 +77,7 @@ After a few weeks of use from the Claude iPhone app, the assistant listed the to
      - EMPTY_SLOT: a slot nobody healthy can fill.
    - `weekly-check` now starts from it and adds the news.
    - Verified live: it caught next week's superflex lineup with an RB slot nobody can fill (the starter is on bye and the only other RB projects 0).
+   - Tuned after the first run from the phone (2026-10-25). Every move has a reason: incoming players say whom they replace. EMPTY_SLOT and NO_PROJECTION risks carry the top three free agents for that slot (fetched per slot, in parallel; a failed lookup just leaves them out). NO_PROJECTION now says to treat the slot as open, since the optimizer only starts a 0-projection player when nobody else can.
 8. [ ] **Practice reports and inactives.** Hard. ESPN's fantasy API has no practice participation, and inactives land about 90 minutes before kickoff. It would need ESPN's separate, also undocumented, news feed or another source, plus polling on game day. Until then, the skills use web search.
 9. [ ] **Write actions** (`set_lineup`, `add_drop`, `submit_claim`). Hardest, and it needs a decision first: the project is read-only by design. ESPN's write endpoints are unofficial and thinly covered by espn-api, a bad call costs a real roster move, and the hosted server's token-in-URL auth would be guarding writes (see OAuth under open questions). If pursued: lineup moves first (reversible until kickoff), every write behind an explicit confirmation (MCP elicitation where the client supports it), and claims last.
 

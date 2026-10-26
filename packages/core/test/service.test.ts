@@ -234,6 +234,39 @@ describe("FantasyService across leagues and teams", () => {
     expect(board.errors).toEqual([{ league: "two", error: expect.stringMatching(/No matchup/) }]);
   });
 
+  it("suggests free agents for a slot the roster can't fill", async () => {
+    const { fetch } = fixtureFetch();
+    // A stored rule asking for more RBs than the roster has forces an empty slot.
+    const slots = { QB: 1, RB: 8, WR: 2, TE: 1, FLEX: 1, "D/ST": 1, K: 1 };
+    const svc = new FantasyService(new EspnClient({ fetch }), {
+      leagues: [
+        {
+          alias: "test",
+          leagueId: 1234,
+          year: 2018,
+          myTeamId: 1,
+          rules: { "roster.slots": { value: slots, source: "user", confirmed: "2026-10-25" } },
+        },
+      ],
+    });
+    const lineup = await svc.getOptimalLineup("test", 1);
+    const empty = lineup.risks.filter((r) => r.type === "EMPTY_SLOT");
+    expect(empty.length).toBeGreaterThan(0);
+    for (const r of empty) {
+      expect(r.slot).toBe("RB");
+      expect(r.freeAgents!.length).toBeGreaterThan(0);
+      expect(r.freeAgents!.length).toBeLessThanOrEqual(3);
+      expect(r.freeAgents![0]).toMatchObject({
+        name: expect.any(String),
+        status: expect.any(String),
+      });
+    }
+    // Risks that aren't holes get no suggestions.
+    for (const r of lineup.risks.filter((x) => x.type === "GAME_TIME")) {
+      expect(r.freeAgents).toBeUndefined();
+    }
+  });
+
   it("lists the league's teams with mine marked", async () => {
     const teams = await service(2).svc.getTeams("test");
     expect(teams).toHaveLength(10);

@@ -115,7 +115,9 @@ describe("optimizeLineup", () => {
         { player: "Wideout Two", from: "WR", to: "BE", reason: "bye" },
         { player: "Tight End", from: "TE", to: "BE", reason: "OUT" },
         { player: "Flex Back", from: "FLEX", to: "BE", reason: "lower projection" },
-        { player: "Bench Wideout", from: "BE", to: "WR", reason: null },
+        { player: "Bench Wideout", from: "BE", to: "WR", reason: "replaces Wideout Two" },
+        { player: "Bench Tight End", from: "BE", to: "TE", reason: "replaces Tight End" },
+        { player: "Bench Back", from: "BE", to: "FLEX", reason: "replaces Flex Back" },
       ]),
     );
     // Benchings come first.

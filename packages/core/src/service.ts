@@ -139,13 +139,41 @@ export class FantasyService {
   /**
    * The highest-projected legal lineup for my team, from the league's starting
    * slots (stored rules applied), with the moves to get there and risks to check.
+   * A slot the roster can't fill comes with the top free agents for it.
    */
   async getOptimalLineup(league: string, week?: number): Promise<OptimalLineup> {
     const [settings, roster] = await Promise.all([
       this.getLeagueSettings(league),
       this.getMyRoster(league, week),
     ]);
-    return OptimalLineup.parse(optimizeLineup(roster, settings.roster.slots));
+    const lineup = optimizeLineup(roster, settings.roster.slots);
+    const holes = lineup.risks.filter((r) => r.type === "EMPTY_SLOT" || r.type === "NO_PROJECTION");
+    const slots = [...new Set(holes.map((r) => r.slot))];
+    const options = new Map(
+      await Promise.all(
+        slots.map(async (slot) => {
+          // Suggestions are a bonus: a failed lookup still returns the lineup.
+          const fas = await this.getFreeAgents(league, slot, 3, lineup.week).catch(() => null);
+          return [slot, fas] as const;
+        }),
+      ),
+    );
+    for (const risk of holes) {
+      const fas = options.get(risk.slot);
+      if (fas) {
+        risk.freeAgents = fas.map(
+          ({ name, position, proTeam, injuryStatus, projectedPoints, status }) => ({
+            name,
+            position,
+            proTeam,
+            injuryStatus,
+            projectedPoints,
+            status,
+          }),
+        );
+      }
+    }
+    return OptimalLineup.parse(lineup);
   }
 
   /** Every team in a league: record, points, playoff seed, waiver rank and FAAB left. */

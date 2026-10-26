@@ -244,6 +244,19 @@ export const Scoreboard = z.object({
 });
 export type Scoreboard = z.infer<typeof Scoreboard>;
 
+export const FreeAgentSort = z.enum(["week", "season"]);
+export type FreeAgentSort = z.infer<typeof FreeAgentSort>;
+export type Matchup = z.infer<typeof Matchup>;
+
+export const FreeAgent = Player.extend({
+  status: z.enum(["FREE_AGENT", "WAIVERS"]),
+  percentChange: z.number().nullable(),
+  positionalRank: z.number().int().nullable(),
+  seasonPoints: z.number().nullable(),
+  seasonProjectedPoints: z.number().nullable(),
+});
+export type FreeAgent = z.infer<typeof FreeAgent>;
+
 export const LineupPlayer = Player.pick({
   id: true,
   name: true,
@@ -272,7 +285,8 @@ export const OptimalLineup = z.object({
       player: z.string(),
       from: z.string(),
       to: z.string(),
-      reason: z.string().nullable(),
+      /** Why a starter sits (bye, OUT, lower projection), or whom a player coming in replaces. */
+      reason: z.string(),
     }),
   ),
   /** Things to check before lock. */
@@ -282,24 +296,24 @@ export const OptimalLineup = z.object({
       slot: z.string(),
       player: z.string().nullable(),
       detail: z.string(),
+      /** For EMPTY_SLOT and NO_PROJECTION: the top free agents for that slot this week. */
+      freeAgents: z
+        .array(
+          FreeAgent.pick({
+            name: true,
+            position: true,
+            proTeam: true,
+            injuryStatus: true,
+            projectedPoints: true,
+            status: true,
+          }),
+        )
+        .optional(),
     }),
   ),
   asOf: z.string(),
 });
 export type OptimalLineup = z.infer<typeof OptimalLineup>;
-
-export const FreeAgentSort = z.enum(["week", "season"]);
-export type FreeAgentSort = z.infer<typeof FreeAgentSort>;
-export type Matchup = z.infer<typeof Matchup>;
-
-export const FreeAgent = Player.extend({
-  status: z.enum(["FREE_AGENT", "WAIVERS"]),
-  percentChange: z.number().nullable(),
-  positionalRank: z.number().int().nullable(),
-  seasonPoints: z.number().nullable(),
-  seasonProjectedPoints: z.number().nullable(),
-});
-export type FreeAgent = z.infer<typeof FreeAgent>;
 
 export const TransactionAction = z.enum([
   "ADD",
