@@ -16,4 +16,4 @@ export {
   EspnError,
   EspnHttpError,
   EspnNotFoundError,
-} from "@espn-fantasy-mcp/espn-client";
+} from "@nscaamano/espn-fantasy-client";

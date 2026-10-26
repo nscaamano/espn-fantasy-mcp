@@ -19,7 +19,7 @@ import {
   Team,
   Transaction,
   type FantasyService,
-} from "@espn-fantasy-mcp/core";
+} from "@nscaamano/espn-fantasy-core";
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { loadSkills, promptName, promptText, type Skill } from "./skills.js";

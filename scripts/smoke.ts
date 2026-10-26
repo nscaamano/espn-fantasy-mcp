@@ -8,7 +8,7 @@
 //   pnpm smoke -- --position RB   free agents at another position
 
 import { parseArgs } from "node:util";
-import { FantasyService, type Player, type RosterSlot } from "@espn-fantasy-mcp/core";
+import { FantasyService, type Player, type RosterSlot } from "@nscaamano/espn-fantasy-core";
 
 const { values: args } = parseArgs({
   options: {

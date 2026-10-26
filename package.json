@@ -17,7 +17,7 @@
     "start": "node apps/mcp/dist/serve.js"
   },
   "devDependencies": {
-    "@espn-fantasy-mcp/core": "workspace:*",
+    "@nscaamano/espn-fantasy-core": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.19.1",
     "eslint": "^10.12.0",

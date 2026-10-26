@@ -1,8 +1,26 @@
 {
-  "name": "@espn-fantasy-mcp/espn-client",
+  "name": "@nscaamano/espn-fantasy-client",
   "version": "0.1.0",
-  "private": true,
+  "description": "Read-only TypeScript client for ESPN fantasy football's undocumented v3 API: league settings, rosters, matchups, free agents, activity and pending claims.",
+  "license": "MIT",
+  "author": "Nick Caamano",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nscaamano/espn-fantasy-mcp.git",
+    "directory": "packages/espn-client"
+  },
+  "homepage": "https://github.com/nscaamano/espn-fantasy-mcp#readme",
+  "bugs": "https://github.com/nscaamano/espn-fantasy-mcp/issues",
+  "keywords": [
+    "espn",
+    "fantasy-football",
+    "espn-fantasy",
+    "typescript"
+  ],
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -10,10 +28,16 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
     "build": "tsc -b",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepack": "cp ../../LICENSE . && cp ../../THIRD_PARTY_NOTICES.md ."
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

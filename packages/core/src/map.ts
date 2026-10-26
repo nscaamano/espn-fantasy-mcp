@@ -11,7 +11,7 @@ import type {
   EspnProTeam,
   EspnRosterEntry,
   EspnTeam,
-} from "@espn-fantasy-mcp/espn-client";
+} from "@nscaamano/espn-fantasy-client";
 import type {
   ClaimPlayer,
   FreeAgent,

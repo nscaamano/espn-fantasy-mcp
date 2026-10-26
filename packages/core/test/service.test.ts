@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { EspnClient } from "@espn-fantasy-mcp/espn-client";
+import { EspnClient } from "@nscaamano/espn-fantasy-client";
 import { describe, expect, it } from "vitest";
 import { fixtureFetch } from "../../espn-client/test/fixtures.js";
 import { loadConfig, type LeaguesConfig } from "../src/config.js";

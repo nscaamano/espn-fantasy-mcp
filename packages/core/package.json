@@ -1,8 +1,26 @@
 {
-  "name": "@espn-fantasy-mcp/core",
+  "name": "@nscaamano/espn-fantasy-core",
   "version": "0.1.0",
-  "private": true,
+  "description": "Zod schemas, league rules discovery, a lineup optimizer and domain functions over ESPN fantasy football. The contract behind espn-fantasy-mcp.",
+  "license": "MIT",
+  "author": "Nick Caamano",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nscaamano/espn-fantasy-mcp.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/nscaamano/espn-fantasy-mcp#readme",
+  "bugs": "https://github.com/nscaamano/espn-fantasy-mcp/issues",
+  "keywords": [
+    "espn",
+    "fantasy-football",
+    "zod",
+    "lineup-optimizer"
+  ],
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -10,14 +28,19 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "scripts": {
     "build": "tsc -b",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepack": "cp ../../LICENSE ."
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
-    "@espn-fantasy-mcp/espn-client": "workspace:*",
+    "@nscaamano/espn-fantasy-client": "workspace:*",
     "zod": "^4.6.5"
   }
 }

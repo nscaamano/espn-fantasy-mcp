@@ -5,7 +5,12 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { parseEnv } from "node:util";
-import { FantasyService, LeaguesConfig, findConfigPath, saveConfig } from "@espn-fantasy-mcp/core";
+import {
+  FantasyService,
+  LeaguesConfig,
+  findConfigPath,
+  saveConfig,
+} from "@nscaamano/espn-fantasy-core";
 import { z } from "zod";
 
 /** LEAGUES_CONFIG, else the nearest leagues.json above this package, else above the cwd. */

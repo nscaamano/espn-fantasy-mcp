@@ -7,7 +7,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer as createNodeServer, type IncomingMessage, type Server } from "node:http";
 import { Readable } from "node:stream";
-import type { FantasyService } from "@espn-fantasy-mcp/core";
+import type { FantasyService } from "@nscaamano/espn-fantasy-core";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { createServer, type ServerOptions } from "./server.js";
 

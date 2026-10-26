@@ -14,3 +14,7 @@ leagues.json
 
 # Claude Code per-user settings (skills under .claude/skills are tracked)
 .claude/settings.local.json
+
+# Copied in by each package prepack for npm, not tracked
+packages/*/LICENSE
+packages/*/THIRD_PARTY_NOTICES.md

@@ -87,7 +87,7 @@ Before calling a change done, run build, typecheck, lint and test. CI (`.github/
 
 ## Conventions
 
-- ESM throughout, so relative imports use the `.js` suffix. Strict TS with `noUncheckedIndexedAccess`. Packages are scoped `@espn-fantasy-mcp/*`.
+- ESM throughout, so relative imports use the `.js` suffix. Strict TS with `noUncheckedIndexedAccess`. Packages are `@nscaamano/espn-fantasy-client`, `-core` and `-mcp`. The client and core are set up for npm (`publishConfig`, a `prepack` that copies LICENSE, and THIRD_PARTY_NOTICES for the client). Publish with `pnpm publish` from the package folder, so `workspace:*` becomes a real version. Bump both versions together. The MCP server stays private until it can find `skills/` without the repo.
 - TypeScript is pinned to 6.0 because typescript-eslint doesn't support 7 yet. zod is v4 (`z.partialRecord`, `z.prettifyError`).
 - Parsers return `null` for "ESPN didn't say", never a guessed default. Rules discovery depends on that difference.
 - Tests: parser tests use `packages/espn-client/test/fixtures/`. Service and MCP tests use `fixtureFetch()`, which routes requests to fixtures by `view`; MCP tests connect a real client over `InMemoryTransport`. No network in unit tests. Use generic names in tests (no real leagues).

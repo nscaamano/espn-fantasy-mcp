@@ -87,9 +87,11 @@ After a few weeks of use from the Claude iPhone app, the assistant listed the to
   - Fix mode fills my hole from another team's surplus.
   - Opportunity mode covers consolidation, buy-low and sell-high.
   - Every proposal gets a fairness check.
-- [ ] **Publish to npm.** Publish `espn-client` and `core` as libraries, so other apps can depend on them. Publish the MCP server with a `bin`, so MCP clients can launch it with `npx`.
-  - Needs an owned npm scope: create the `@espn-fantasy-mcp` org, or rename the packages to `@nscaamano/*`.
-  - Do it once the MCP server works (after step 3).
+- [ ] **Publish to npm.** Ready to publish, not yet published (needs `npm login`).
+  - [x] Renamed to `@nscaamano/espn-fantasy-client`, `@nscaamano/espn-fantasy-core` and `@nscaamano/espn-fantasy-mcp` (2026-10-25).
+  - [x] Publish metadata, READMEs, and a `prepack` that copies LICENSE (plus THIRD_PARTY_NOTICES for the client). `pnpm pack` checked: only dist, src and license files go in, and `workspace:*` becomes a real version.
+  - [ ] `pnpm publish` the client, then core. Both are 0.1.0. A private app needs core from npm to deploy.
+  - [ ] The MCP server with a `bin` for `npx`. It needs to ship `skills/` inside the package first.
 
 ## Open questions
 

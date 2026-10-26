@@ -2,7 +2,7 @@
 // a thin layer over this class. No lineup or waiver opinions here: those belong
 // in the skills.
 
-import { EspnClient, type EspnLeagueSettings } from "@espn-fantasy-mcp/espn-client";
+import { EspnClient, type EspnLeagueSettings } from "@nscaamano/espn-fantasy-client";
 import { z } from "zod";
 import {
   findConfigPath,

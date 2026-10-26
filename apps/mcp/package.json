@@ -1,5 +1,5 @@
 {
-  "name": "@espn-fantasy-mcp/mcp",
+  "name": "@nscaamano/espn-fantasy-mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -20,12 +20,12 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@espn-fantasy-mcp/core": "workspace:*",
+    "@nscaamano/espn-fantasy-core": "workspace:*",
     "@modelcontextprotocol/server": "^2.1.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@espn-fantasy-mcp/espn-client": "workspace:*",
+    "@nscaamano/espn-fantasy-client": "workspace:*",
     "@modelcontextprotocol/client": "^2.1.0"
   }
 }
