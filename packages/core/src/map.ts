@@ -97,7 +97,7 @@ const SLOT_ORDER = [
   "K",
   "P",
 ];
-const slotRank = (slot: string) => {
+export const slotRank = (slot: string) => {
   const i = SLOT_ORDER.indexOf(slot);
   return i === -1 ? SLOT_ORDER.length : i;
 };

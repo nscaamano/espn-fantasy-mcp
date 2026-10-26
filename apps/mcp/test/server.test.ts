@@ -47,6 +47,7 @@ describe("MCP server", () => {
       "get_league_settings",
       "get_matchup",
       "get_my_roster",
+      "get_optimal_lineup",
       "get_pending_claims",
       "get_recent_activity",
       "get_scoreboard",
@@ -89,6 +90,20 @@ describe("MCP server", () => {
       matchups: [],
       errors: [{ league: "test", error: expect.stringMatching(/No matchup/) }],
     });
+  });
+
+  it("returns an optimal lineup that fills the league's starting slots", async () => {
+    const { call } = await connect();
+    const res = await call("get_optimal_lineup", { league: "test", week: 1 });
+    expect(res.isError).toBeFalsy();
+    const out = res.structuredContent as {
+      starters: { slot: string }[];
+      projectedTotal: number;
+      currentProjectedTotal: number;
+    };
+    // The fixture league starts QB, 2 RB, 2 WR, TE, FLEX, D/ST and K.
+    expect(out.starters).toHaveLength(9);
+    expect(out.projectedTotal).toBeGreaterThanOrEqual(out.currentProjectedTotal - 0.01);
   });
 
   it("lists teams and returns another team's roster", async () => {

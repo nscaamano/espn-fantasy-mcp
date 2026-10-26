@@ -21,6 +21,7 @@ import {
   toTransaction,
   type ProSchedule,
 } from "./map.js";
+import { optimizeLineup } from "./lineup.js";
 import { applyRules } from "./rules.js";
 import {
   FreeAgent,
@@ -30,6 +31,7 @@ import {
   PendingClaim,
   Roster,
   RuleKey,
+  OptimalLineup,
   Scoreboard,
   Transaction,
   type FreeAgentSort,
@@ -132,6 +134,18 @@ export class FantasyService {
       ...splitLineup(roster.entries, schedule, roster.week),
       asOf: this.now().toISOString(),
     });
+  }
+
+  /**
+   * The highest-projected legal lineup for my team, from the league's starting
+   * slots (stored rules applied), with the moves to get there and risks to check.
+   */
+  async getOptimalLineup(league: string, week?: number): Promise<OptimalLineup> {
+    const [settings, roster] = await Promise.all([
+      this.getLeagueSettings(league),
+      this.getMyRoster(league, week),
+    ]);
+    return OptimalLineup.parse(optimizeLineup(roster, settings.roster.slots));
   }
 
   /** Every team in a league: record, points, playoff seed, waiver rank and FAAB left. */

@@ -244,6 +244,50 @@ export const Scoreboard = z.object({
 });
 export type Scoreboard = z.infer<typeof Scoreboard>;
 
+export const LineupPlayer = Player.pick({
+  id: true,
+  name: true,
+  position: true,
+  proTeam: true,
+  injuryStatus: true,
+  projectedPoints: true,
+}).extend({
+  /** ISO, UTC; null on a bye. */
+  kickoff: z.string().nullable(),
+  locked: z.boolean(),
+});
+export type LineupPlayer = z.infer<typeof LineupPlayer>;
+
+/** The highest-projected legal lineup. Mechanical: no news, no judgment. */
+export const OptimalLineup = z.object({
+  league: z.string(),
+  week: z.number().int(),
+  /** A null player is a slot no healthy, eligible player can fill. */
+  starters: z.array(z.object({ slot: z.string(), player: LineupPlayer.nullable() })),
+  projectedTotal: z.number(),
+  currentProjectedTotal: z.number(),
+  /** Every player whose slot changes; BE is the bench. `reason` says why a starter sits. */
+  moves: z.array(
+    z.object({
+      player: z.string(),
+      from: z.string(),
+      to: z.string(),
+      reason: z.string().nullable(),
+    }),
+  ),
+  /** Things to check before lock. */
+  risks: z.array(
+    z.object({
+      type: z.enum(["GAME_TIME", "NO_PROJECTION", "EMPTY_SLOT"]),
+      slot: z.string(),
+      player: z.string().nullable(),
+      detail: z.string(),
+    }),
+  ),
+  asOf: z.string(),
+});
+export type OptimalLineup = z.infer<typeof OptimalLineup>;
+
 export const FreeAgentSort = z.enum(["week", "season"]);
 export type FreeAgentSort = z.infer<typeof FreeAgentSort>;
 export type Matchup = z.infer<typeof Matchup>;

@@ -14,6 +14,7 @@ Use the league the user named, or every league from `list_leagues`. For each one
 1. **`get_league_settings`.** Note the starting slots (`roster.slots`), whether the league is superflex (an `OP` slot), the scoring format and `lineupLock`. If `missingRules` or `conflicts` is non-empty, ask the user before advising, and save the answer with `set_league_rule`. Never carry one league's rules over to another.
 2. **`get_my_roster`** for the current week.
 3. **`get_matchup`** for the projected score on both sides and the margin.
+4. **`get_optimal_lineup`** for the best lineup by projection. It already handles slot eligibility, byes, OUT/IR/SUSPENDED players and locked players, and lists `risks`: questionable starters without a same-time-or-later backup, zero projections and slots nobody can fill. Treat it as the starting point, not the answer: it doesn't know the news.
 
 ## 2. Flag problems
 
@@ -47,7 +48,8 @@ If you have no web search, say so, and use the ESPN tags and projections only, l
 
 ## 4. Set the lineup
 
-- **Fill each slot** with the highest-projected eligible, healthy player, adjusted for the news. FLEX takes RB, WR or TE. OP (superflex) takes QB, RB, WR or TE.
+- **Start from `get_optimal_lineup`'s `moves`**, then adjust for the news: a player the news rules out comes out, and a questionable player cleared by the news can go back in. FLEX takes RB, WR or TE. OP (superflex) takes QB, RB, WR or TE.
+- **An `EMPTY_SLOT` risk** means no healthy player on the roster can fill that slot. Check `get_free_agents` for that position, then name the pickup and the drop.
 - **Superflex:** start the two best-projected QBs regardless of name, and check both for byes.
 - **Default to the safe lineup.** A questionable star sits until news clears him, then gets swapped in. A forgotten swap should never mean a zero. Give the user the deadline for that swap: his kickoff, or inactives about 90 minutes before.
 - **Lineups lock per player at kickoff** (`game.kickoff`), not at the week's first game. A Sunday or Monday player can still be swapped after Thursday's game.

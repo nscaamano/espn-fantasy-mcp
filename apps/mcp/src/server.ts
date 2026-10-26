@@ -10,6 +10,7 @@ import {
   League,
   LeagueSettings,
   Matchup,
+  OptimalLineup,
   PendingClaim,
   Roster,
   RuleKey,
@@ -109,6 +110,19 @@ export function createServer(
       annotations: READ,
     },
     async (args) => result(await service().getMyRoster(args.league, args.week)),
+  );
+
+  server.registerTool(
+    "get_optimal_lineup",
+    {
+      title: "Best lineup by projection",
+      description:
+        "The user's highest-projected legal lineup for a week in one league, computed from the league's starting slots and each player's eligible slots. Players on a bye or OUT, IR or SUSPENDED don't start. Locked players (game started) stay where they are, and IR slots are left alone. Returns `starters`, the `moves` to get there (`to: \"BE\"` means bench, with a `reason`), projected totals before and after, and `risks`: GAME_TIME (a QUESTIONABLE or DOUBTFUL starter, with any bench backups who play at the same time or later, so there's a pivot after inactives), NO_PROJECTION (projected at 0) and EMPTY_SLOT (nobody healthy can fill it). It knows nothing about the news: check flagged players before acting, and don't churn over a point or two.",
+      inputSchema: z.object({ league, week }),
+      outputSchema: OptimalLineup,
+      annotations: READ,
+    },
+    async (args) => result(await service().getOptimalLineup(args.league, args.week)),
   );
 
   server.registerTool(
