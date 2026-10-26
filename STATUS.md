@@ -4,10 +4,9 @@ Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
 
 **Next session**, in order:
 
-1. **Lineup optimizer** (tooling request 7), the other half of the assistant's top two.
-2. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves. On a game day, also do the live game-day check below.
-3. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
-4. **Add a network retry to espn-client** (see open questions). It's small and prevents the CDN failure seen on 2026-10-14.
+1. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves. On a game day, also do the live game-day check below.
+2. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
+3. **Player lookup by name** (tooling request 5), the next item up in difficulty.
 
 ## Done
 
@@ -39,6 +38,7 @@ Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
   - Verified on a hosted deployment: live ESPN reads work from a cloud host, and claude.ai connects as a custom connector.
   - Provider-specific setup stays out of the repo.
 - [x] **CI** (2026-10-21). GitHub Actions runs build, typecheck, lint, format check and tests on every push and pull request.
+- [x] **Network retry** (2026-10-25). espn-client retries once, after 500 ms, on a network failure or a 502/503/504; auth and not-found errors fail at once. Errors now name the cause (`fetch failed (ECONNRESET)`). Prompted by 2026-10-14, when one of ESPN's CDN addresses failed for minutes. A retry opens a new connection, which usually gets another address, but nothing guarantees it.
 - [x] **Deploy-on-push** (2026-10-25). The hosted copy deploys from `main` after CI passes. The setup lives on the host; details are in the private runbook.
 
 ## In progress / next
@@ -69,7 +69,14 @@ After a few weeks of use from the Claude iPhone app, the assistant listed the to
 4. [x] **Other teams' rosters** (2026-10-25). `get_teams` (record, points, seed, waiver rank, FAAB left) and `get_team_roster` (any team, same shape as `get_my_roster`). These were the data the trades skill needed.
 5. [ ] **Player lookup by name** (`get_player(name, league)`). Small to medium. It returns ownership (which team, or FA/waivers), status and projections. It needs a name filter in the `x-fantasy-filter` request (check espn-api; not yet verified) plus a check against every roster. It also covers breakouts outside the free-agent pool's top 50 (see Free-agent depth).
 6. [ ] **FAAB bid history by position.** Medium. Winning bids are in `get_recent_activity`, but a season's worth means paging the activity endpoint and aggregating by position and week. Same as FAAB market memory under ideas.
-7. [ ] **Lineup optimizer** (`get_optimal_lineup`). Medium. It fills slots from `eligibleSlots` by projection, excluding byes and OUT/IR/SUSPENDED players. It flags game-time risk using `game.kickoff`: a Q starter whose only eligible backup kicks off at the same time or earlier. It's mechanical, so it can live in core without breaking "core has no opinions" as long as news-based judgment stays in `weekly-check`. Small brute force or matching over a roster of about 16.
+7. [x] **Lineup optimizer** (2026-10-25). `get_optimal_lineup` (`core/src/lineup.ts`) solves the slot assignment exactly (Hungarian algorithm) over the league's starting slots, with stored rules applied.
+   - It excludes byes and OUT/IR/SUSPENDED players, keeps locked players in place, and leaves IR slots alone. Ties keep the current lineup, so it doesn't churn.
+   - It returns the moves (benchings come with a reason) and before/after totals, plus `risks`:
+     - GAME_TIME: a Q or D starter, with the bench backups who play at the same time or later.
+     - NO_PROJECTION: a starter projected at 0.
+     - EMPTY_SLOT: a slot nobody healthy can fill.
+   - `weekly-check` now starts from it and adds the news.
+   - Verified live: it caught next week's superflex lineup with an RB slot nobody can fill (the starter is on bye and the only other RB projects 0).
 8. [ ] **Practice reports and inactives.** Hard. ESPN's fantasy API has no practice participation, and inactives land about 90 minutes before kickoff. It would need ESPN's separate, also undocumented, news feed or another source, plus polling on game day. Until then, the skills use web search.
 9. [ ] **Write actions** (`set_lineup`, `add_drop`, `submit_claim`). Hardest, and it needs a decision first: the project is read-only by design. ESPN's write endpoints are unofficial and thinly covered by espn-api, a bad call costs a real roster move, and the hosted server's token-in-URL auth would be guarding writes (see OAuth under open questions). If pursued: lineup moves first (reversible until kickoff), every write behind an explicit confirmation (MCP elicitation where the client supports it), and claims last.
 
@@ -86,7 +93,6 @@ After a few weeks of use from the Claude iPhone app, the assistant listed the to
 ## Open questions
 
 - **OAuth for the HTTP mode.** A token in the URL is simple but weaker. claude.ai connectors support OAuth, which would allow per-device revocation and avoid long-lived secrets in URLs.
-- **Retry on network errors.** On 2026-10-14, one of ESPN's CDN addresses failed intermittently. Node's `fetch` only tried that first address, so every call failed for a few minutes. One retry on connect errors in espn-client would ride that out.
 - **Rest-of-season projections.** ESPN returns a stat entry with `statSplitTypeId: 3`, season period, projected source, alongside the season projection. It may be rest-of-season; unverified. Check it against ESPN's ROS rankings before building trades.
 - **Free-agent depth.** `getFreeAgents` pulls ESPN's top 50 by % rostered, then re-sorts by projection, so a low-rostered breakout outside the top 50 can be missed. Consider paging, or ESPN's projection sort filter.
 - **Waiver process hour.** `acquisitionSettings.waiverProcessHour` is 11 in all three leagues, but it isn't a clock hour in UTC or Eastern time. Every pending claim on 2026-10-13 had `processDate` 07:00 UTC (Wed 3:00 AM ET). `status.waiverProcessStatus` (past runs, keyed by timestamp) shows runs between 07:00 and 08:00 UTC on Wed and some Thu/Fri/Sat/Sun. `status.waiverLastExecutionDate` was Tue 07:24–07:52 UTC, a day not in `waiverProcessDays`. Meaning of 11 unknown. Use a claim's `processesAt` for timing. `get_league_settings` still passes `processHour` through raw; consider replacing it with the last and next run times from `status`.

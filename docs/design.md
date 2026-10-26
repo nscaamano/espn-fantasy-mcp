@@ -108,6 +108,7 @@ All tools are read-only toward ESPN. `league` accepts an alias from `leagues.jso
 | `list_leagues` | — | my leagues with scoring type and format |
 | `get_league_settings` | league | roster slots, scoring, FAAB remaining, waiver rules, `missingRules`, `conflicts` |
 | `get_my_roster` | league, week? | starters, bench, IR with injury tags, `lastNewsDate`, byes, projections, lock state, `asOf` |
+| `get_optimal_lineup` | league, week? | highest-projected legal lineup (exact assignment over the league's slots; byes, OUT/IR/SUSPENDED and locked players handled), `moves` with reasons, before/after totals, `risks` (GAME_TIME, NO_PROJECTION, EMPTY_SLOT). Mechanical; `weekly-check` adds the news |
 | `get_matchup` | league, week? | both starting lineups and projected totals, `asOf` (ESPN's matchup data has no `lastNewsDate`) |
 | `get_scoreboard` | week? | my matchup in every league, in parallel; unreadable leagues go to `errors` |
 | `get_teams` | league | every team: record, points, seed, waiver rank, FAAB left |
