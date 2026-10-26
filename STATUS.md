@@ -4,7 +4,7 @@ Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
 
 **Next session**, in order:
 
-1. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves. On a game day, also do the live game-day check below.
+1. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves.
 2. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
 3. **Player lookup by name** (tooling request 5), the next item up in difficulty.
 
@@ -39,11 +39,16 @@ Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
   - Provider-specific setup stays out of the repo.
 - [x] **CI** (2026-10-21). GitHub Actions runs build, typecheck, lint, format check and tests on every push and pull request.
 - [x] **Network retry** (2026-10-25). espn-client retries once, after 500 ms, on a network failure or a 502/503/504; auth and not-found errors fail at once. Errors now name the cause (`fetch failed (ECONNRESET)`). Prompted by 2026-10-14, when one of ESPN's CDN addresses failed for minutes. A retry opens a new connection, which usually gets another address, but nothing guarantees it.
+- [x] **Live game-day check** (2026-10-25, Sunday night of week 7).
+  - Actual points come through as expected: null until a player's game starts, then live.
+  - **ESPN's matchup data never sets `lineupLocked`**, even after a game ends. Rosters do set it.
+  - Core now locks matchup players at kickoff (`lockAtKickoff`), so `get_matchup` and `get_scoreboard` report `locked` correctly. The `scoreboard` skill relies on that flag.
+  - Found while building the private web app's scoreboard.
+- [x] **Security upgrade** (2026-10-25). `pnpm audit` flagged high advisories on the MCP SDK (server < 2.3.0: messages crossing between HTTP clients, and memory exhaustion from one request) and zod (< 4.6.6: memory exhaustion). Upgraded to SDK 2.3.1 and zod 4.6.7, so the audit is clean. Run `pnpm audit` before releases.
 - [x] **Deploy-on-push** (2026-10-25). The hosted copy deploys from `main` after CI passes. The setup lives on the host; details are in the private runbook.
 
 ## In progress / next
 
-- [ ] Check live game-day shapes (fixtures are from 2018): during a game window, confirm `locked` and actual points on `get_matchup`.
 - [ ] **Step 4: Skills.** Written 2026-10-14. The done-check is still pending.
   - [x] `skills/weekly-check/SKILL.md` and `skills/waivers/SKILL.md` (Agent Skills format), with the rules of thumb from the design doc built in.
   - [x] Claude Code loads them through symlinks in `.claude/skills/`. The MCP server serves the same files as the prompts `weekly_check` and `waivers` (optional `league` argument; the text starts with the current time). A test fails if a skill names a tool the server doesn't have.

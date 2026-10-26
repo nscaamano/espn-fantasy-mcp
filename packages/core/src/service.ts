@@ -17,6 +17,7 @@ import {
   splitLineup,
   toFreeAgent,
   toLeagueSettings,
+  lockAtKickoff,
   toPendingClaim,
   toTransaction,
   type ProSchedule,
@@ -200,12 +201,15 @@ export class FantasyService {
     }
     const [me, opp] =
       mine.home?.teamId === cfg.myTeamId ? [mine.home, mine.away] : [mine.away!, mine.home];
+    const now = this.now();
     const side = (s: NonNullable<typeof me>): MatchupSide => ({
       teamId: s.teamId,
       teamName: this.teamName(settings, s.teamId),
       score: s.score,
       projected: s.projected,
-      starters: splitLineup(s.lineup, schedule, mine.week).starters,
+      starters: splitLineup(s.lineup, schedule, mine.week).starters.map((st) =>
+        lockAtKickoff(st, now),
+      ),
     });
     return Matchup.parse({
       league: cfg.alias,

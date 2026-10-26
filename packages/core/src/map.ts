@@ -81,6 +81,16 @@ export function toRosterSlot(e: EspnRosterEntry, schedule: ProSchedule, week: nu
   return { slot: e.slot, locked: e.locked, player: toPlayer(e.player, schedule, week) };
 }
 
+/**
+ * ESPN's matchup data never sets lineupLocked (seen live, 2026 week 7: false for
+ * every player, even after his game ended). A lineup locks per player at
+ * kickoff, so derive it from the kickoff time.
+ */
+export function lockAtKickoff(s: RosterSlot, now: Date): RosterSlot {
+  const started = s.player.game !== null && Date.parse(s.player.game.kickoff) <= now.getTime();
+  return started && !s.locked ? { ...s, locked: true } : s;
+}
+
 // ESPN lists slots by id (QB, RB, WR, TE, OP, D/ST, K, FLEX); sort starters
 // into the order the app shows them.
 const SLOT_ORDER = [
