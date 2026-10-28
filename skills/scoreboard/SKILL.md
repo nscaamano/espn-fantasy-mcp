@@ -14,6 +14,7 @@ Uses the espn-fantasy MCP tools. ESPN's app shows one matchup at a time; this pu
 
 From each matchup, use for both sides:
 - `score` (points so far) and `projected` (ESPN's live projected final).
+- `winProbability`: ESPN's chance that side wins (0–1). It's set for the current week only, and is null otherwise.
 - Each starter's `slot`, name, `actualPoints`, `projectedPoints`, `injuryStatus`, `locked` and `game` (kickoff, opponent).
 
 A player has played, or is playing, if `locked` is true. Show his points even if they're 0.0. A player who hasn't kicked off shows "—" for points. On a bye week (`opponent` is null), say so and show only the user's side.
@@ -22,13 +23,14 @@ A player has played, or is playing, if `locked` is true. Show his points even if
 
 One row per league, with the most interesting game first: closest projected margin, then the rest.
 
-| League | You | Opponent | Proj. (you – opp) | Status |
-|---|---|---|---|---|
-| League A | **90.8** · Smith 22.9, Jones 19.7, Lee 9.1 | 83.2 Team Name · Brown 27.4, Diaz 16.4, Cole 14.7 | 104.0 – 96.5 | Leading by 7.6 · 1 left vs 1 |
+| League | You | Opponent | Proj. (you – opp) | Win % | Status |
+|---|---|---|---|---|---|
+| League A | **90.8** · Smith 22.9, Jones 19.7, Lee 9.1 | 83.2 Team Name · Brown 27.4, Diaz 16.4, Cole 14.7 | 104.0 – 96.5 | 71% | Leading by 7.6 · 1 left vs 1 |
 
 - **You:** your score, bold if you're ahead, then your **top three scorers** by actual points so far, as last names with points. Before any of your starters has played, show the top three by projection instead, marked "proj".
 - **Opponent:** their score (bold if they're ahead), their team name, then their top three the same way.
 - **Proj.:** the two `projected` totals.
+- **Win %:** your `winProbability` as a whole percentage (ESPN's number, not yours). Show "—" when it's null.
 - **Status:** leading or trailing, and by how much: "Narrow lead" if the margin is under about 10, then how many starters each side still has to play ("2 left vs 3"). Once every starter on both sides has played, say "Won" or "Lost".
 
 Above the table, say in one line whether games are still in progress, and in which window ("4:25 PM games in progress, SNF and MNF still to come").

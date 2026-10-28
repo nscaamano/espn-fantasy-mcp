@@ -236,6 +236,8 @@ export const MatchupSide = z.object({
   teamName: z.string(),
   score: z.number(),
   projected: z.number(),
+  /** ESPN's chance this side wins (0–1), live during the week. Null for other weeks. */
+  winProbability: z.number().nullable(),
   starters: z.array(RosterSlot),
 });
 export type MatchupSide = z.infer<typeof MatchupSide>;

@@ -56,7 +56,7 @@ If the team id is wrong, the error message lists every team in the league with i
 | `get_league_settings` | scoring, roster slots, waivers and FAAB left, lineup lock, trades, playoffs, standings, plus `missingRules` and `conflicts` |
 | `get_my_roster` | starters, bench and IR with injury status and when ESPN last had news on the player, bye, this week's game (opponent, kickoff), projected and actual points, lock state |
 | `get_optimal_lineup` | your best lineup by projection (slot eligibility, byes, OUT players, locks, pending claims), the moves to get there, and risks: a questionable starter with no late backup (flagged when the tag may be stale), a slot nobody can fill (with free agents and their claim or add deadline, or the queued claim that covers it), and a player left on IR who isn't IR-eligible. With a full roster, it also names a drop |
-| `get_matchup` | both starting lineups, scores and projected totals |
+| `get_matchup` | both starting lineups, scores, projected totals and ESPN's win probability |
 | `get_scoreboard` | your matchup in every league in one call; a league that can't be read is listed separately |
 | `get_teams` | every team in a league: record, points, seed, waiver rank, FAAB left |
 | `get_team_roster` | any team's roster, same shape as `get_my_roster` |

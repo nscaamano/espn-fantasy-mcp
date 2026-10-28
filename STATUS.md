@@ -4,13 +4,14 @@ Last updated: 2026-10-28 · Design and specs: [docs/design.md](docs/design.md)
 
 **Next session**, in order:
 
-1. **Publish client and core 0.2.0** (user: needs the npm two-factor code). The optimizer fixes below are built and pushed; versions are bumped. Run `pnpm publish` in `packages/espn-client`, then `packages/core`. Apps typed against core need 0.2.0 for the new fields.
+1. **Publish client and core 0.3.0** (user: needs the npm two-factor code). Adds `winProbability` to matchup sides; versions are bumped. Run `pnpm publish` in `packages/espn-client`, then `packages/core`. (0.2.0, with the optimizer fixes, is published.)
 2. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves.
 3. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
 4. **Player lookup by name** (tooling request 5), the next item up in difficulty.
 
 ## Done
 
+- [x] **ESPN's win probability** (2026-10-28): `winProbability` (0–1) on each matchup side in `get_matchup` and `get_scoreboard`, from `mMatchupScore`. ESPN sets it for the current matchup period only, so other weeks return null. The scoreboard skill shows it as a "Win %" column. Verified live for all three leagues.
 - [x] **Optimizer fixes from real use** (2026-10-28). All additive (new fields, risk types and one rule; no renames), from misses in weeks 7–8:
   - **`IR_INELIGIBLE` risk:** a player in an IR slot whose status softened (OUT → QUESTIONABLE) blocks adds and claims. The new rule `roster.irEligibleStatuses` sits in `missingRules` until set (ESPN doesn't expose it; checked live), and the optimizer assumes OUT/IR/SUSPENDED meanwhile. Both skills ask for it once per league.
   - **`droppable`** on roster slots (ESPN's undroppable list, and false once the game kicks off) and lineup players. **`seasonProjectedPoints`** on every player.

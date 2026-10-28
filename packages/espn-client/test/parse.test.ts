@@ -119,6 +119,25 @@ describe("parseMatchups", () => {
       .reduce((t, e) => t + (e.player.week.projected ?? 0), 0);
     expect(home.projected).toBeCloseTo(expected, 2);
   });
+
+  it("reads ESPN's win probability, which only the current matchup period has", () => {
+    expect(matchups[0]!.home!.winProbability).toBeNull();
+    const [live] = parseMatchups(
+      {
+        schedule: [
+          {
+            matchupPeriodId: 8,
+            home: { teamId: 1, totalPoints: 0, winProbability: 0.59 },
+            away: { teamId: 2, totalPoints: 0, winProbability: 0.41 },
+          },
+        ],
+      },
+      2026,
+      8,
+    );
+    expect(live!.home!.winProbability).toBe(0.59);
+    expect(live!.away!.winProbability).toBe(0.41);
+  });
 });
 
 describe("parseFreeAgents", () => {

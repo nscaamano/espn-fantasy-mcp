@@ -145,6 +145,8 @@ export interface RawMatchupSide {
   totalPoints?: number;
   totalPointsLive?: number;
   totalProjectedPointsLive?: number;
+  /** 0–1, on the current matchup period only (mMatchupScore). */
+  winProbability?: number;
   rosterForCurrentScoringPeriod?: { entries?: RawRosterEntry[] };
 }
 

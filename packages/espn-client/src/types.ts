@@ -121,6 +121,8 @@ export interface EspnMatchupSide {
   score: number;
   /** ESPN's live projection when available, else the sum of starters' projections. */
   projected: number;
+  /** ESPN's chance this side wins (0–1). Null outside the current matchup period. */
+  winProbability: number | null;
   lineup: EspnRosterEntry[];
 }
 

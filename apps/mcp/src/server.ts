@@ -129,7 +129,7 @@ export function createServer(
     "get_matchup",
     {
       title: "My matchup",
-      description: `The user's head-to-head matchup in one league for a week: both teams' starting lineups with per-player points, projections, injury status and lock state, plus scores and projected totals. \`opponent\` is null on a bye. For every league at once, use get_scoreboard. ${MATCHUP_FRESHNESS}`,
+      description: `The user's head-to-head matchup in one league for a week: both teams' starting lineups with per-player points, projections, injury status and lock state, plus scores, projected totals and ESPN's win probability (\`winProbability\`, 0–1; null outside the current week). \`opponent\` is null on a bye. For every league at once, use get_scoreboard. ${MATCHUP_FRESHNESS}`,
       inputSchema: z.object({ league, week }),
       outputSchema: Matchup,
       annotations: READ,

@@ -271,6 +271,7 @@ function parseMatchupSide(
     teamId: side.teamId,
     score: round(side.totalPointsLive ?? side.totalPoints ?? 0),
     projected,
+    winProbability: side.winProbability ?? null,
     lineup,
   };
 }

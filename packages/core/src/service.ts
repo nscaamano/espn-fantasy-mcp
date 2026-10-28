@@ -222,6 +222,7 @@ export class FantasyService {
       teamName: this.teamName(settings, s.teamId),
       score: s.score,
       projected: s.projected,
+      winProbability: s.winProbability,
       starters: splitLineup(s.lineup, schedule, mine.week).starters.map((st) =>
         lockAtKickoff(st, now),
       ),
