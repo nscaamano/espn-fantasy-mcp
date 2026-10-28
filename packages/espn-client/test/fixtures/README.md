@@ -13,6 +13,7 @@ confirms the current season's shapes.
 | `player_card.json` | `league_2019_playerCard.json`, 2 players | `kona_playercard` |
 | `pro_schedule.json` | `pro_schedule_2024.json`, week 1 games only | `proTeamSchedules_wl` |
 | `pending_transactions.json` | Recorded live on 2026-10-13 (two queued waiver claims); see below | `mPendingTransactions` |
+| `transactions.json` | Hand-written in the shape recorded live on 2026-10-28 (a FAAB waiver run); see below | `mTransactions2`, week 8 |
 
 Per-player stats were cut to the scoring periods the tests read, and stat
 breakdowns were dropped.
@@ -21,3 +22,11 @@ breakdowns were dropped.
 `memberId` (ESPN's account GUID), `isActingAsTeamOwner` and `isLeagueManager`
 were removed, the league id set to 1234, the user's team renumbered to 1, and
 claim ids replaced. Player ids and timestamps are real.
+
+`transactions.json` is made up, in the live shape: a waiver run writes one
+`PROCESS` record per claim (`EXECUTED` or `FAILED_*`) whose
+`relatedTransactionId` points at the proposal, which stays `PENDING` in the
+log. It holds the latest run (team 2 wins one claim, loses one to team 5's $40
+bid, and has one fail for another reason), the resolved proposals, a
+cancellation (which records $0; its proposal has the bid), a claim queued after the run, and a run from the day before.
+Player 3045147 matches `player_card.json`; the rest are placeholder ids.

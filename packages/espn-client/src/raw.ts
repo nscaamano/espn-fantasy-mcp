@@ -170,6 +170,7 @@ export interface RawLeague {
   schedule?: RawMatchup[];
   players?: RawPlayerPoolEntry[];
   pendingTransactions?: RawPendingTransaction[];
+  transactions?: RawTransaction[];
 }
 
 export interface RawTransactionItem {
@@ -195,6 +196,16 @@ export interface RawPendingTransaction {
   processDate?: number;
   scoringPeriodId?: number;
   items?: RawTransactionItem[];
+}
+
+/**
+ * A transaction from the league log (`view=mTransactions2`), any team. A waiver
+ * run writes one PROCESS record per claim, pointing back at the proposal.
+ * `memberId` is deliberately not modeled, as above.
+ */
+export interface RawTransaction extends RawPendingTransaction {
+  executionType?: string; // EXECUTE (a proposal), PROCESS (a run's result), CANCEL
+  relatedTransactionId?: string;
 }
 
 export interface RawActivityMessage {

@@ -10,6 +10,7 @@ import {
   parseLeagueSettings,
   parseMatchups,
   parsePendingClaims,
+  parseTransactions,
   parsePlayer,
   parseProTeams,
   parseRosters,
@@ -22,6 +23,7 @@ import type {
   EspnLeagueSettings,
   EspnMatchup,
   EspnPendingClaim,
+  EspnTransaction,
   EspnPlayer,
   EspnProTeam,
   EspnRoster,
@@ -221,6 +223,28 @@ export class EspnClient {
       claims.flatMap((c) => [c.add, c.drop].filter((p) => p !== null)),
     );
     return claims;
+  }
+
+  /**
+   * The league's transaction log for one scoring period, every team's, with
+   * names for the players in waiver claims. A waiver run shows up as one PROCESS
+   * record per claim (EXECUTED or FAILED_*), each pointing at its proposal.
+   */
+  async getTransactions(leagueId: number, year: number, week?: number): Promise<EspnTransaction[]> {
+    const w = await this.resolveWeek(leagueId, year, week);
+    const raw = await this.leagueGet<RawLeague>(leagueId, year, {
+      views: ["mTransactions2"],
+      scoringPeriodId: w,
+    });
+    const transactions = parseTransactions(raw);
+    await this.nameItems(
+      leagueId,
+      year,
+      transactions
+        .filter((t) => t.type === "WAIVER")
+        .flatMap((t) => [t.add, t.drop].filter((p) => p !== null)),
+    );
+    return transactions;
   }
 
   // ── Supporting reads ────────────────────────────────────────────────────────

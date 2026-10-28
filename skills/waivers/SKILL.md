@@ -21,6 +21,7 @@ Use the league the user named, or every league from `list_leagues`. For each one
    If `missingRules` or `conflicts` is non-empty, ask the user first, and save the answer with `set_league_rule`. That includes `roster.irEligibleStatuses`, which ESPN never reports: an ineligible player left on IR blocks every claim. Never assume a waiver system. Don't suggest bids in a priority league.
 2. **`get_my_roster`** for the current week. On waiver day, ESPN's current week is already the upcoming one.
 3. **`get_pending_claims`.** What the user has already queued: don't repeat a claim or reuse a drop by accident.
+   After a waiver run (usually Wednesday morning), **`get_waiver_results`** shows which claims won and which lost, to whom and for how much. Start from the lost ones: those holes are still open.
 4. **`get_recent_activity`.** The prices in this league. Winning FAAB bids show what managers here pay. It also shows who just dropped whom.
 
 ## 2. Find the holes

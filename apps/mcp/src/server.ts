@@ -12,6 +12,7 @@ import {
   Matchup,
   OptimalLineup,
   PendingClaim,
+  WaiverResults,
   Roster,
   RuleKey,
   Scoreboard,
@@ -265,6 +266,22 @@ export function createServer(
     },
     async (args) =>
       result({ league: args.league, claims: await service().getPendingClaims(args.league) }),
+  );
+
+  server.registerTool(
+    "get_waiver_results",
+    {
+      title: "My waiver results",
+      description:
+        "How the user's claims fared in a week's latest waiver run in a league. Each claim is WON, LOST (another team got the player: `wonBy` names the team and its winning FAAB bid, which is null in priority-waiver leagues, where the team ahead in waiver priority wins), FAILED (any other reason, in `reason`) or CANCELED (withdrawn before the run). Also returns when the run processed (`processedAt`, null if none has run this week yet) and the user's waiver priority now (`waiverRank`, 1 = first). Use it after claims process (usually Wednesday morning) to report results and find replacements for lost claims with get_free_agents.",
+      inputSchema: z.object({
+        league,
+        week: week.describe("NFL week. Defaults to the league's current week."),
+      }),
+      outputSchema: WaiverResults,
+      annotations: READ,
+    },
+    async (args) => result(await service().getWaiverResults(args.league, args.week)),
   );
 
   server.registerTool(

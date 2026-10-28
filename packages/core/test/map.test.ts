@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { lockAtKickoff } from "../src/map.js";
+import type { EspnTransaction } from "@nscaamano/espn-fantasy-client";
+import { lockAtKickoff, toWaiverResults } from "../src/map.js";
 import type { RosterSlot } from "../src/schemas.js";
 
 const slot = (kickoff: string | null, locked = false): RosterSlot => ({
@@ -42,5 +43,142 @@ describe("lockAtKickoff", () => {
   it("makes a player undroppable once his game kicks off", () => {
     const s = lockAtKickoff(slot("2026-10-25T17:00:00.000Z"), now);
     expect(s).toMatchObject({ locked: true, droppable: false });
+  });
+});
+
+describe("toWaiverResults", () => {
+  const RUN = Date.parse("2026-10-28T07:20:00.000Z");
+  const player = (playerId: number) => ({
+    playerId,
+    playerName: `Player ${playerId}`,
+    position: "WR",
+    proTeam: "TST",
+    fromSlot: null,
+  });
+  const tx = (over: Partial<EspnTransaction> & { teamId: number }): EspnTransaction => ({
+    id: null,
+    type: "WAIVER",
+    bid: 0,
+    proposedDate: RUN,
+    processDate: RUN,
+    add: null,
+    drop: null,
+    status: "EXECUTED",
+    executionType: "PROCESS",
+    relatedId: null,
+    ...over,
+  });
+  const names = (id: number) => `Team ${id}`;
+
+  it("names who got a lost player and their winning bid in a FAAB league", () => {
+    const { processedAt, claims } = toWaiverResults(
+      [
+        tx({ teamId: 8, bid: 40, add: player(1) }),
+        tx({
+          teamId: 1,
+          bid: 8,
+          add: player(1),
+          drop: player(9),
+          status: "FAILED_INVALIDPLAYERSOURCE",
+        }),
+        tx({ teamId: 1, bid: 5, add: player(2), processDate: RUN + 30_000 }),
+      ],
+      1,
+      true,
+      names,
+    );
+    expect(processedAt).toBe("2026-10-28T07:20:30.000Z");
+    expect(claims).toEqual([
+      {
+        result: "WON",
+        add: expect.objectContaining({ name: "Player 2" }),
+        drop: null,
+        bid: 5,
+        wonBy: null,
+        reason: null,
+      },
+      {
+        result: "LOST",
+        add: expect.objectContaining({ name: "Player 1" }),
+        drop: expect.objectContaining({ name: "Player 9" }),
+        bid: 8,
+        wonBy: { team: "Team 8", bid: 40 },
+        reason: null,
+      },
+    ]);
+  });
+
+  it("drops the $0 bids of a priority league", () => {
+    const { claims } = toWaiverResults(
+      [
+        tx({ teamId: 8, add: player(1) }),
+        tx({ teamId: 1, add: player(1), status: "FAILED_INVALIDPLAYERSOURCE" }),
+      ],
+      1,
+      false,
+      names,
+    );
+    expect(claims[0]).toMatchObject({
+      result: "LOST",
+      bid: null,
+      wonBy: { team: "Team 8", bid: null },
+    });
+  });
+
+  it("explains a claim that lost to another of the user's own claims", () => {
+    const { claims } = toWaiverResults(
+      [
+        tx({ teamId: 1, add: player(1), drop: player(9) }),
+        tx({ teamId: 1, add: player(1), drop: player(10), status: "FAILED_INVALIDPLAYERSOURCE" }),
+      ],
+      1,
+      true,
+      names,
+    );
+    expect(claims[1]).toMatchObject({
+      result: "FAILED",
+      reason: "another of your claims added him first",
+    });
+  });
+
+  it("takes a canceled claim's bid from the proposal it canceled", () => {
+    const { claims } = toWaiverResults(
+      [
+        tx({ teamId: 8, add: player(5) }),
+        tx({
+          id: "p1",
+          teamId: 1,
+          bid: 3,
+          add: player(1),
+          status: "PENDING",
+          executionType: "EXECUTE",
+          processDate: null,
+        }),
+        tx({
+          teamId: 1,
+          add: player(1),
+          status: "CANCELED",
+          executionType: "CANCEL",
+          processDate: null,
+          relatedId: "p1",
+          proposedDate: RUN - 1000,
+        }),
+      ],
+      1,
+      true,
+      names,
+    );
+    expect(claims).toEqual([expect.objectContaining({ result: "CANCELED", bid: 3 })]);
+  });
+
+  it("is empty before any run", () => {
+    expect(
+      toWaiverResults(
+        [tx({ teamId: 1, status: "PENDING", executionType: "EXECUTE", processDate: null })],
+        1,
+        true,
+        names,
+      ),
+    ).toEqual({ processedAt: null, claims: [] });
   });
 });

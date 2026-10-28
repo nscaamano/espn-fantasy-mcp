@@ -7,6 +7,7 @@ import {
   parsePendingClaims,
   parseProTeams,
   parseRosters,
+  parseTransactions,
 } from "../src/parse.js";
 import type { RawCommunication, RawLeague, RawProSchedule } from "../src/raw.js";
 import { fixture } from "./fixtures.js";
@@ -248,5 +249,28 @@ describe("parsePendingClaims", () => {
   it("skips anything no longer pending", () => {
     const done = raw.pendingTransactions!.map((t) => ({ ...t, status: "EXECUTED" }));
     expect(parsePendingClaims({ ...raw, pendingTransactions: done })).toEqual([]);
+  });
+});
+
+describe("parseTransactions", () => {
+  const log = parseTransactions(fixture<RawLeague>("transactions.json"));
+
+  it("reads every team's records with status, execution type and the proposal they resolve", () => {
+    expect(log).toHaveLength(11);
+    expect(log[0]).toMatchObject({
+      teamId: 2,
+      type: "WAIVER",
+      status: "EXECUTED",
+      executionType: "PROCESS",
+      relatedId: "00000000-0000-4000-8000-000000000011",
+      bid: 5,
+      processDate: 1793172036575,
+      add: { playerId: 3045147, playerName: null },
+      drop: { playerId: 110, fromSlot: "BE" },
+    });
+    expect(log.find((t) => t.status === "CANCELED")).toMatchObject({
+      executionType: "CANCEL",
+      processDate: null,
+    });
   });
 });

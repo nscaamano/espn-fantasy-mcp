@@ -20,6 +20,7 @@ import {
   lockAtKickoff,
   toPendingClaim,
   toTransaction,
+  toWaiverResults,
   type ProSchedule,
 } from "./map.js";
 import { DEFAULT_IR_ELIGIBLE, optimizeLineup } from "./lineup.js";
@@ -35,6 +36,7 @@ import {
   OptimalLineup,
   Scoreboard,
   Transaction,
+  WaiverResults,
   type FreeAgentSort,
   type Team,
   ruleValueSchema,
@@ -314,6 +316,27 @@ export class FantasyService {
     return claims
       .filter((c) => c.teamId === cfg.myTeamId)
       .map((c) => PendingClaim.parse(toPendingClaim(c, settings.acquisition.usesFaab)));
+  }
+
+  /**
+   * How the user's claims fared in this week's latest waiver run: won, lost
+   * (to whom, for how much) or failed, plus claims canceled since the run
+   * before, and the user's waiver priority now.
+   */
+  async getWaiverResults(league: string, week?: number): Promise<WaiverResults> {
+    const cfg = findLeague(this.config, league);
+    const settings = await this.espnSettings(cfg);
+    const w = week ?? settings.currentWeek;
+    const transactions = await this.client.getTransactions(cfg.leagueId, cfg.year, w);
+    const usesFaab = settings.acquisition.usesFaab;
+    return WaiverResults.parse({
+      league: cfg.alias,
+      week: w,
+      ...toWaiverResults(transactions, cfg.myTeamId, usesFaab, (id) => this.teamName(settings, id)),
+      usesFaab,
+      waiverRank: settings.teams.find((t) => t.id === cfg.myTeamId)?.waiverRank ?? null,
+      asOf: this.now().toISOString(),
+    });
   }
 
   /**

@@ -116,6 +116,7 @@ All tools are read-only toward ESPN. `league` accepts an alias from `leagues.jso
 | `get_free_agents` | league, position?, limit?, sort? | top available by week (default) or full-season projection; waiver vs FA status |
 | `get_recent_activity` | league, limit? | recent adds, drops, waiver results with bids, trades |
 | `get_pending_claims` | league | my queued claims: add, drop (and the slot it leaves), bid (null in priority leagues), submitted and processing times. ESPN exposes no claim order |
+| `get_waiver_results` | league, week? | my claims in the week's latest waiver run (`mTransactions2`): WON, LOST (winning team and bid), FAILED (reason) or CANCELED; `processedAt`; my `waiverRank` now |
 | `set_league_rule` | league, rule, value, source | persist a rule confirmed by upload or answer (writes `leagues.json` only) |
 
 - **Output:** compact JSON, never ESPN's raw payload, so each call costs few tokens. List results are wrapped in an object (`{ leagues }`, `{ freeAgents }`, `{ transactions }`), since MCP structured output must be an object.

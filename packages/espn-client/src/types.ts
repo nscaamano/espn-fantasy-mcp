@@ -192,6 +192,16 @@ export interface EspnPendingClaim {
   drop: EspnClaimPlayer | null;
 }
 
+/** A transaction from the league log, any team (see EspnClient.getTransactions). */
+export interface EspnTransaction extends EspnPendingClaim {
+  /** EXECUTED, CANCELED, PENDING, or FAILED_* (e.g. FAILED_INVALIDPLAYERSOURCE). */
+  status: string;
+  /** EXECUTE (a proposal), PROCESS (a waiver run's result) or CANCEL. */
+  executionType: string | null;
+  /** For PROCESS and CANCEL records, the proposal they resolve. */
+  relatedId: string | null;
+}
+
 export interface EspnProGame {
   opponent: string;
   home: boolean;

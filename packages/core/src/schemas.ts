@@ -408,3 +408,39 @@ export const PendingClaim = z.object({
   processesAt: z.string().nullable(),
 });
 export type PendingClaim = z.infer<typeof PendingClaim>;
+
+/** How one of the user's claims fared in the latest waiver run. */
+export const ClaimResult = z.object({
+  /**
+   * WON; LOST: another team got the player (see `wonBy`); FAILED: any other
+   * reason (see `reason`); CANCELED: withdrawn before the run.
+   */
+  result: z.enum(["WON", "LOST", "FAILED", "CANCELED"]),
+  add: ClaimPlayer.nullable(),
+  drop: ClaimPlayer.nullable(),
+  /** The user's FAAB bid; null in priority-waiver leagues. */
+  bid: z.number().nullable(),
+  /**
+   * Who got the player instead, and their winning bid (null in priority-waiver
+   * leagues, where the team ahead in waiver priority wins).
+   */
+  wonBy: z.object({ team: z.string(), bid: z.number().nullable() }).nullable(),
+  /** Why a FAILED claim failed: ESPN's status (e.g. FAILED_ROSTERLIMIT) or a note. */
+  reason: z.string().nullable(),
+});
+export type ClaimResult = z.infer<typeof ClaimResult>;
+
+export const WaiverResults = z.object({
+  league: z.string(),
+  week: z.number().int(),
+  /** When this week's latest waiver run processed; null if none has yet. */
+  processedAt: z.string().nullable(),
+  usesFaab: z.boolean(),
+  /** The user's waiver priority now (1 = first in line), after the run. */
+  waiverRank: z.number().int().nullable(),
+  /** The user's claims in that run, plus ones canceled since the run before. */
+  claims: z.array(ClaimResult),
+  /** When this was read from ESPN (ISO, UTC). */
+  asOf: z.string(),
+});
+export type WaiverResults = z.infer<typeof WaiverResults>;

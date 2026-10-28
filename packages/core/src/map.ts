@@ -11,9 +11,11 @@ import type {
   EspnProTeam,
   EspnRosterEntry,
   EspnTeam,
+  EspnTransaction,
 } from "@nscaamano/espn-fantasy-client";
 import type {
   ClaimPlayer,
+  ClaimResult,
   FreeAgent,
   InjuryStatus,
   LeagueSettings,
@@ -303,4 +305,84 @@ export function toPendingClaim(c: EspnPendingClaim, usesFaab: boolean): PendingC
     proposedAt: isoOrNull(c.proposedDate),
     processesAt: isoOrNull(c.processDate),
   };
+}
+
+/** Claims ESPN processed within this long of the latest one belong to the same run. */
+const RUN_WINDOW_MS = 60 * 60 * 1000;
+const RESULT_ORDER: Record<ClaimResult["result"], number> = {
+  WON: 0,
+  LOST: 1,
+  FAILED: 2,
+  CANCELED: 3,
+};
+
+/**
+ * The user's claims in the latest waiver run among `transactions` (one scoring
+ * period's log, every team's), with who got each lost player and for how much.
+ * Proposals stay PENDING in the log after a run; only PROCESS and CANCEL
+ * records count. `usesFaab`: priority leagues report $0 bids; drop them there.
+ */
+export function toWaiverResults(
+  transactions: EspnTransaction[],
+  myTeamId: number,
+  usesFaab: boolean,
+  teamName: (teamId: number) => string,
+): { processedAt: string | null; claims: ClaimResult[] } {
+  const processed = transactions.filter(
+    (t) => t.type === "WAIVER" && t.executionType === "PROCESS" && t.processDate !== null,
+  );
+  if (!processed.length) return { processedAt: null, claims: [] };
+  const runAt = Math.max(...processed.map((t) => t.processDate!));
+  const run = processed.filter((t) => runAt - t.processDate! < RUN_WINDOW_MS);
+  // Cancellations count back to the run before this one.
+  const earlier = processed.map((t) => t.processDate!).filter((d) => runAt - d >= RUN_WINDOW_MS);
+  const since = earlier.length ? Math.max(...earlier) : -Infinity;
+  const canceled = transactions.filter(
+    (t) =>
+      t.type === "WAIVER" &&
+      t.teamId === myTeamId &&
+      t.status === "CANCELED" &&
+      t.proposedDate !== null &&
+      t.proposedDate > since &&
+      t.proposedDate <= runAt,
+  );
+  const winners = new Map(
+    run.filter((t) => t.status === "EXECUTED" && t.add).map((t) => [t.add!.playerId, t]),
+  );
+  const byId = new Map(transactions.filter((t) => t.id).map((t) => [t.id!, t]));
+  // A cancellation records $0; the bid is on the proposal it cancels.
+  const bid = (t: EspnTransaction) =>
+    !usesFaab
+      ? null
+      : t.status === "CANCELED"
+        ? (byId.get(t.relatedId ?? "")?.bid ?? t.bid)
+        : t.bid;
+
+  const claims = [...run.filter((t) => t.teamId === myTeamId), ...canceled].map(
+    (t): ClaimResult => {
+      const base = {
+        add: t.add ? toClaimPlayer(t.add) : null,
+        drop: t.drop ? toClaimPlayer(t.drop) : null,
+        bid: bid(t),
+        wonBy: null,
+        reason: null,
+      };
+      if (t.status === "CANCELED") return { ...base, result: "CANCELED" };
+      if (t.status === "EXECUTED") return { ...base, result: "WON" };
+      const winner = t.add ? winners.get(t.add.playerId) : undefined;
+      if (winner?.teamId === myTeamId) {
+        return { ...base, result: "FAILED", reason: "another of your claims added him first" };
+      }
+      if (winner) {
+        return {
+          ...base,
+          result: "LOST",
+          wonBy: { team: teamName(winner.teamId), bid: bid(winner) },
+        };
+      }
+      return { ...base, result: "FAILED", reason: t.status };
+    },
+  );
+  claims.sort((a, b) => RESULT_ORDER[a.result] - RESULT_ORDER[b.result]);
+  return { processedAt: new Date(runAt).toISOString(), claims };
 }

@@ -182,6 +182,29 @@ describe("FantasyService", () => {
   });
 });
 
+describe("FantasyService.getWaiverResults", () => {
+  it("reports my claims in the latest run, in a priority league, with my waiver rank", async () => {
+    const { svc, calls } = service(2);
+    const r = await svc.getWaiverResults("test", 8);
+    expect(calls.some((c) => c.url.searchParams.get("scoringPeriodId") === "8")).toBe(true);
+    expect(r).toMatchObject({
+      league: "test",
+      week: 8,
+      processedAt: "2026-10-28T07:20:36.575Z",
+      usesFaab: false,
+      waiverRank: 5,
+    });
+    expect(r.claims.map((c) => [c.result, c.add?.name, c.wonBy?.team ?? c.reason])).toEqual([
+      ["WON", "James Conner", null],
+      ["LOST", "Player 101", "Watch What You Saquon"],
+      ["FAILED", "Player 102", "FAILED_ROSTERLIMIT"],
+      ["CANCELED", "Player 103", null],
+    ]);
+    // Priority league: no bids, not even the winner's.
+    expect(r.claims.every((c) => c.bid === null && (c.wonBy?.bid ?? null) === null)).toBe(true);
+  });
+});
+
 describe("FantasyService.getPendingClaims", () => {
   it("returns my queued claims with ISO times and no bid in a priority league", async () => {
     const claims = await service(1).svc.getPendingClaims("test");

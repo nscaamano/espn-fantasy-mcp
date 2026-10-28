@@ -4,13 +4,17 @@ Last updated: 2026-10-28 · Design and specs: [docs/design.md](docs/design.md)
 
 **Next session**, in order:
 
-1. **Publish client and core 0.3.0** (user: needs the npm two-factor code). Adds `winProbability` to matchup sides; versions are bumped. Run `pnpm publish` in `packages/espn-client`, then `packages/core`. (0.2.0, with the optimizer fixes, is published.)
+1. **Publish client and core 0.3.0** (user: needs the npm two-factor code). Adds `winProbability` to matchup sides and the waiver results (`getTransactions`, `getWaiverResults`); versions are bumped. Run `pnpm publish` in `packages/espn-client`, then `packages/core`. (0.2.0, with the optimizer fixes, is published.)
 2. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves.
 3. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
 4. **Player lookup by name** (tooling request 5), the next item up in difficulty.
 
 ## Done
 
+- [x] **`get_waiver_results` tool** (2026-10-28). How the user's claims fared in the week's latest waiver run, from `view=mTransactions2` (the league's transaction log, every team's):
+  - A run writes one `PROCESS` record per claim (`EXECUTED` or `FAILED_*`) pointing at its proposal (`relatedTransactionId`), which stays `PENDING` in the log, so only PROCESS and CANCEL records count. Claims processed within an hour of the latest one form the run (daily-waiver leagues have several runs a week).
+  - Each claim is WON, LOST (another team's EXECUTED add of the same player in the run: that team and its bid), FAILED (ESPN's status as `reason`) or CANCELED (since the run before; the bid comes from the canceled proposal, since the cancel record says $0). Bids are null in priority leagues. Plus `processedAt` and the user's `waiverRank` now.
+  - `memberId` isn't modeled. The test fixture is hand-written in the live shape. Verified live on 2026-10-28 for all three leagues (a won $5 claim and a canceled $3 one in the FAAB superflex league).
 - [x] **ESPN's win probability** (2026-10-28): `winProbability` (0–1) on each matchup side in `get_matchup` and `get_scoreboard`, from `mMatchupScore`. ESPN sets it for the current matchup period only, so other weeks return null. The scoreboard skill shows it as a "Win %" column. Verified live for all three leagues.
 - [x] **Optimizer fixes from real use** (2026-10-28). All additive (new fields, risk types and one rule; no renames), from misses in weeks 7–8:
   - **`IR_INELIGIBLE` risk:** a player in an IR slot whose status softened (OUT → QUESTIONABLE) blocks adds and claims. The new rule `roster.irEligibleStatuses` sits in `missingRules` until set (ESPN doesn't expose it; checked live), and the optimizer assumes OUT/IR/SUSPENDED meanwhile. Both skills ask for it once per league.

@@ -18,6 +18,8 @@ import type {
   RawProTeam,
   RawRosterEntry,
   RawTeam,
+  RawPendingTransaction,
+  RawTransaction,
   RawTransactionItem,
 } from "./raw.js";
 import type {
@@ -30,6 +32,7 @@ import type {
   EspnMatchup,
   EspnMatchupSide,
   EspnPendingClaim,
+  EspnTransaction,
   EspnPlayer,
   EspnProGame,
   EspnProTeam,
@@ -301,34 +304,51 @@ export function parseFreeAgents(raw: RawLeague, year: number, week: number): Esp
  * EspnClient.getPendingClaims). A claim is one ADD plus an optional DROP.
  */
 export function parsePendingClaims(raw: RawLeague): EspnPendingClaim[] {
-  const player = (item: RawTransactionItem | undefined): EspnClaimPlayer | null =>
-    item?.playerId === undefined
-      ? null
-      : {
-          playerId: item.playerId,
-          playerName: null,
-          position: null,
-          proTeam: null,
-          fromSlot:
-            item.fromLineupSlotId !== undefined && item.fromLineupSlotId >= 0
-              ? slotLabel(item.fromLineupSlotId)
-              : null,
-        };
   return (raw.pendingTransactions ?? [])
     .filter((t) => (t.status ?? "PENDING") === "PENDING" && t.teamId !== undefined)
-    .map((t) => {
-      const items = t.items ?? [];
-      return {
-        id: orNull(t.id),
-        type: t.type ?? "UNKNOWN",
-        teamId: t.teamId!,
-        bid: t.bidAmount ?? 0,
-        proposedDate: orNull(t.proposedDate),
-        processDate: orNull(t.processDate),
-        add: player(items.find((i) => i.type === "ADD")),
-        drop: player(items.find((i) => i.type === "DROP")),
+    .map(parseClaim);
+}
+
+/** The league log, every team's, without player names (see EspnClient.getTransactions). */
+export function parseTransactions(raw: RawLeague): EspnTransaction[] {
+  return (raw.transactions ?? [])
+    .filter((t) => t.teamId !== undefined)
+    .map((t: RawTransaction) => ({
+      ...parseClaim(t),
+      status: t.status ?? "UNKNOWN",
+      executionType: orNull(t.executionType),
+      relatedId: orNull(t.relatedTransactionId),
+    }));
+}
+
+function claimPlayer(item: RawTransactionItem | undefined): EspnClaimPlayer | null {
+  return item?.playerId === undefined
+    ? null
+    : {
+        playerId: item.playerId,
+        playerName: null,
+        position: null,
+        proTeam: null,
+        fromSlot:
+          item.fromLineupSlotId !== undefined && item.fromLineupSlotId >= 0
+            ? slotLabel(item.fromLineupSlotId)
+            : null,
       };
-    });
+}
+
+/** One ADD plus an optional DROP. `teamId` must be set (callers filter). */
+function parseClaim(t: RawPendingTransaction): EspnPendingClaim {
+  const items = t.items ?? [];
+  return {
+    id: orNull(t.id),
+    type: t.type ?? "UNKNOWN",
+    teamId: t.teamId!,
+    bid: t.bidAmount ?? 0,
+    proposedDate: orNull(t.proposedDate),
+    processDate: orNull(t.processDate),
+    add: claimPlayer(items.find((i) => i.type === "ADD")),
+    drop: claimPlayer(items.find((i) => i.type === "DROP")),
+  };
 }
 
 /** Activity topics → items, without player names (see EspnClient.getRecentActivity). */

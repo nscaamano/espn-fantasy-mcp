@@ -53,6 +53,7 @@ describe("MCP server", () => {
       "get_scoreboard",
       "get_team_roster",
       "get_teams",
+      "get_waiver_results",
       "list_leagues",
       "set_league_rule",
     ]);
@@ -142,6 +143,14 @@ describe("MCP server", () => {
 
     const none = await (await connect(2)).call("get_pending_claims", { league: "test" });
     expect(none.structuredContent).toEqual({ league: "test", claims: [] });
+  });
+
+  it("returns my waiver results for a week", async () => {
+    const res = await (await connect(2)).call("get_waiver_results", { league: "test", week: 8 });
+    expect(res.isError).toBeFalsy();
+    const out = res.structuredContent as { processedAt: string; claims: { result: string }[] };
+    expect(out.processedAt).toBe("2026-10-28T07:20:36.575Z");
+    expect(out.claims.map((c) => c.result)).toEqual(["WON", "LOST", "FAILED", "CANCELED"]);
   });
 
   it("rejects an unknown position before calling ESPN", async () => {
