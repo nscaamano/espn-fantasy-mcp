@@ -9,6 +9,8 @@ Last updated: 2026-10-28 · Design and specs: [docs/design.md](docs/design.md)
 3. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
 4. **Player lookup by name** (tooling request 5), the next item up in difficulty.
 
+**After any deploy that adds output fields:** clients that cache tool schemas (Claude's connectors) reject the new fields ("must NOT have additional properties") until their tool list is refreshed, because zod objects become JSON Schemas with `additionalProperties: false`. Reconnect the connector (or `/mcp` → Reconnect in Claude Code) after deploying. Clients that list tools per session, like the web app, aren't affected.
+
 ## Done
 
 - [x] **`get_waiver_results` tool** (2026-10-28). How the user's claims fared in the week's latest waiver run, from `view=mTransactions2` (the league's transaction log, every team's):
