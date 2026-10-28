@@ -9,7 +9,7 @@ export {
   saveConfig,
 } from "./config.js";
 export { applyRules } from "./rules.js";
-export { optimizeLineup } from "./lineup.js";
+export { DEFAULT_IR_ELIGIBLE, optimizeLineup, type OptimizeOptions } from "./lineup.js";
 export { FantasyService, type FantasyServiceOptions } from "./service.js";
 export {
   EspnAuthError,

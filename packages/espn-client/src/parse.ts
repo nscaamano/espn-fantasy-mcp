@@ -84,6 +84,7 @@ export function parsePlayer(
     injuryStatus: raw.injuryStatus ?? entryInjuryStatus ?? null,
     injured: raw.injured ?? false,
     lastNewsDate: raw.lastNewsDate ? new Date(raw.lastNewsDate).toISOString() : null,
+    droppable: raw.droppable ?? null,
     percentOwned: ownership?.percentOwned !== undefined ? round(ownership.percentOwned, 1) : null,
     percentStarted:
       ownership?.percentStarted !== undefined ? round(ownership.percentStarted, 1) : null,
@@ -289,6 +290,7 @@ export function parseFreeAgents(raw: RawLeague, year: number, week: number): Esp
   return (raw.players ?? []).map((p) => ({
     status: p.status ?? "FREEAGENT",
     positionalRank: p.ratings?.["0"]?.positionalRanking ?? null,
+    waiverProcessDate: p.waiverProcessDate ? new Date(p.waiverProcessDate).toISOString() : null,
     player: parsePlayer(p.player ?? {}, year, week),
   }));
 }

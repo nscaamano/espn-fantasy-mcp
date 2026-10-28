@@ -22,6 +22,7 @@ const base: Base = {
     hasDst: true,
     hasK: true,
     positionLimits: {},
+    irEligibleStatuses: ["OUT", "IR", "SUSPENDED"],
   },
   waivers: {
     type: "PRIORITY",
@@ -116,5 +117,19 @@ describe("applyRules", () => {
       "waivers.type": { value: "FAAB", source: "user", confirmed: "2026-10-07" },
     });
     expect(base).toEqual(copy);
+  });
+
+  it("lists IR eligibility as missing until it's confirmed, since ESPN never sends it", () => {
+    const fromEspn: Base = { ...base, roster: { ...base.roster, irEligibleStatuses: null } };
+    expect(applyRules(fromEspn, {}).missingRules).toContain("roster.irEligibleStatuses");
+    const s = applyRules(fromEspn, {
+      "roster.irEligibleStatuses": {
+        value: ["OUT", "IR", "SUSPENDED", "DOUBTFUL"],
+        source: "user",
+        confirmed: "2026-10-28",
+      },
+    });
+    expect(s.missingRules).not.toContain("roster.irEligibleStatuses");
+    expect(s.roster.irEligibleStatuses).toEqual(["OUT", "IR", "SUSPENDED", "DOUBTFUL"]);
   });
 });

@@ -4,20 +4,22 @@ Last updated: 2026-10-28 · Design and specs: [docs/design.md](docs/design.md)
 
 **Next session**, in order:
 
-1. **Optimizer fixes from real use** (2026-10-28). All are additive: new fields and risk types, with no tool or field renames.
-   - **`IR_INELIGIBLE` risk:** a player in an IR slot whose status softened (OUT → QUESTIONABLE) blocks adds and claims. IR-eligible statuses default to OUT/IR/SUSPENDED, via a new rule `roster.irEligibleStatuses` that's in `missingRules` until set. ESPN's settings don't expose it (checked live).
-   - **`droppable` on roster players:** ESPN's `player.droppable` (undroppable list), false once the player's game has kicked off.
-   - **Drop suggestions:** when a pickup is suggested and the roster is full, also suggest the lowest-value droppable bench player. Roster max = the sum of `lineupSlotCounts` excluding IR; ESPN's `isBenchUnlimited` is true even when the app enforces a max.
-   - **`waiverClears` on free agents:** from `playerPoolEntry.waiverProcessDate`, so a waiver suggestion's deadline is the claim run, not kickoff.
-   - **Pending claims in `get_optimal_lineup`:** a claim that fills a flagged slot is attached to the risk, and players being dropped leave the pool.
-   - **Stale-tag flag on GAME_TIME risks:** `lastNewsDate` older than the latest practice-report day of the game week, or than kickoff minus 8 days.
-   - **A 0-projection best option leaves the slot empty** (one `EMPTY_SLOT`, no NO_PROJECTION), without a move that benches him.
-   - **Then publish client and core 0.2.0.**
+1. **Publish client and core 0.2.0** (user: needs the npm two-factor code). The optimizer fixes below are built and pushed; versions are bumped. Run `pnpm publish` in `packages/espn-client`, then `packages/core`. Apps typed against core need 0.2.0 for the new fields.
 2. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves.
 3. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
 4. **Player lookup by name** (tooling request 5), the next item up in difficulty.
 
 ## Done
+
+- [x] **Optimizer fixes from real use** (2026-10-28). All additive (new fields, risk types and one rule; no renames), from misses in weeks 7–8:
+  - **`IR_INELIGIBLE` risk:** a player in an IR slot whose status softened (OUT → QUESTIONABLE) blocks adds and claims. The new rule `roster.irEligibleStatuses` sits in `missingRules` until set (ESPN doesn't expose it; checked live), and the optimizer assumes OUT/IR/SUSPENDED meanwhile. Both skills ask for it once per league.
+  - **`droppable`** on roster slots (ESPN's undroppable list, and false once the game kicks off) and lineup players. **`seasonProjectedPoints`** on every player.
+  - **Drop suggestions:** with a full roster (starting slots plus bench; ESPN's `isBenchUnlimited` is true even when a max applies), each pickup and IR fix names the droppable bench player with the lowest season projection. It never picks the only late backup or a player in a pending claim.
+  - **`waiverClears`** on free agents (ESPN's `waiverProcessDate`), plus `kickoff` on suggestions: a claim's deadline is the claim run, a free agent's is his kickoff.
+  - **Pending claims** in `get_optimal_lineup`: players a claim drops leave the pool, and a claim whose add fits an empty slot is attached as `pendingClaim` (no duplicate suggestion, no extra drop).
+  - **`staleTag`** on GAME_TIME risks: news older than the week's latest Wed–Fri practice report (counted from 4 PM ET) or than kickoff minus 8 days.
+  - **A 0-projection best option leaves the slot empty:** one EMPTY_SLOT names him, and no move benches him. A negative D/ST projection still starts, and the rule is skipped when no projections are loaded. NO_PROJECTION stays in the enum for older clients but isn't emitted.
+  - Verified live (week 8): superflex's empty RB slot shows the queued claim, an Oct 18 Q tag is flagged stale, and roster limits (15 and 16) match ESPN. 131 tests.
 
 - [x] **Step 1: Scaffold.** pnpm workspace, strict TypeScript (project references), Vitest, ESLint and Prettier. `.env.example` and `leagues.example.json`. Node 24 via `.nvmrc`.
 - [x] **Step 2: espn-client + core.** Verified live: `pnpm smoke` passes against three real 2026 leagues (full PPR with priority waivers, superflex with FAAB, half-PPR with FAAB).

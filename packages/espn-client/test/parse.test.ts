@@ -130,6 +130,29 @@ describe("parseFreeAgents", () => {
     });
   });
 
+  it("reads the waiver clear time and the undroppable flag", () => {
+    const [onWaivers, free] = parseFreeAgents(
+      {
+        players: [
+          {
+            status: "WAIVERS",
+            waiverProcessDate: 1793170800000,
+            player: { id: 1, fullName: "Waiver WR", droppable: false },
+          },
+          { status: "FREEAGENT", player: { id: 2, fullName: "Free WR" } },
+        ],
+      } as RawLeague,
+      2026,
+      8,
+    );
+    expect(onWaivers).toMatchObject({
+      status: "WAIVERS",
+      waiverProcessDate: "2026-10-28T07:00:00.000Z",
+      player: { droppable: false },
+    });
+    expect(free).toMatchObject({ waiverProcessDate: null, player: { droppable: null } });
+  });
+
   it("converts lastNewsDate from epoch ms to ISO", () => {
     const players = parseFreeAgents(fixture<RawLeague>("free_agents.json"), 2018, 1);
     const dated = players.filter((p) => p.player.lastNewsDate !== null);

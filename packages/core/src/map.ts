@@ -73,12 +73,19 @@ export function toPlayer(p: EspnPlayer, schedule: ProSchedule, week: number): Pl
     actualPoints: p.week.actual,
     percentRostered: p.percentOwned,
     lastNewsDate: p.lastNewsDate,
+    seasonProjectedPoints: p.season.projected,
     eligibleSlots: p.eligibleSlots.filter((s) => !NON_STARTING.has(s)),
   };
 }
 
 export function toRosterSlot(e: EspnRosterEntry, schedule: ProSchedule, week: number): RosterSlot {
-  return { slot: e.slot, locked: e.locked, player: toPlayer(e.player, schedule, week) };
+  return {
+    slot: e.slot,
+    locked: e.locked,
+    // ESPN locks a player for the rest of the week once his game kicks off.
+    droppable: e.player.droppable !== false && !e.locked,
+    player: toPlayer(e.player, schedule, week),
+  };
 }
 
 /**
@@ -88,7 +95,7 @@ export function toRosterSlot(e: EspnRosterEntry, schedule: ProSchedule, week: nu
  */
 export function lockAtKickoff(s: RosterSlot, now: Date): RosterSlot {
   const started = s.player.game !== null && Date.parse(s.player.game.kickoff) <= now.getTime();
-  return started && !s.locked ? { ...s, locked: true } : s;
+  return started && !s.locked ? { ...s, locked: true, droppable: false } : s;
 }
 
 // ESPN lists slots by id (QB, RB, WR, TE, OP, D/ST, K, FLEX); sort starters
@@ -206,6 +213,8 @@ export function toLeagueSettings(
       hasDst: (slots["D/ST"] ?? 0) > 0,
       hasK: (slots.K ?? 0) > 0,
       positionLimits: s.positionLimits,
+      // ESPN doesn't expose which designations may sit on IR (checked live).
+      irEligibleStatuses: null,
     },
     waivers: {
       type: acq.type === null && !faab ? null : faab ? "FAAB" : "PRIORITY",
@@ -246,6 +255,7 @@ export function toFreeAgent(fa: EspnFreeAgent, schedule: ProSchedule, week: numb
     positionalRank: fa.positionalRank,
     seasonPoints: fa.player.season.actual,
     seasonProjectedPoints: fa.player.season.projected,
+    waiverClears: fa.status === "WAIVERS" ? fa.waiverProcessDate : null,
   };
 }
 

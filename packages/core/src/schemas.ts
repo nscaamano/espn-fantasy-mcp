@@ -35,6 +35,7 @@ export const RULE_KEYS = [
   "scoring.items",
   "roster.slots",
   "roster.positionLimits",
+  "roster.irEligibleStatuses",
   "lineupLock",
   "trades.deadline",
   "trades.vetoVotesRequired",
@@ -60,6 +61,8 @@ export const Player = z.object({
   /** For the requested week. */
   projectedPoints: z.number().nullable(),
   actualPoints: z.number().nullable(),
+  /** ESPN's full-season projection: a steadier measure of value than one week (e.g. on a bye). */
+  seasonProjectedPoints: z.number().nullable(),
   percentRostered: z.number().nullable(),
   /**
    * When ESPN last posted news on the player (ISO, UTC). A status older than the
@@ -76,6 +79,11 @@ export const RosterSlot = z.object({
   slot: z.string(),
   /** Game has kicked off; the player can't be moved this week. */
   locked: z.boolean(),
+  /**
+   * Can be dropped now: not on the league's undroppable list, and his game this
+   * week hasn't kicked off (ESPN locks a player for the rest of the week once it has).
+   */
+  droppable: z.boolean(),
   player: Player,
 });
 export type RosterSlot = z.infer<typeof RosterSlot>;
@@ -171,6 +179,12 @@ export const LeagueSettings = z.object({
     hasK: z.boolean(),
     /** Max players per position; unlimited positions omitted. */
     positionLimits: z.record(z.string(), z.number()),
+    /**
+     * Injury designations allowed in an IR slot. ESPN's settings don't expose
+     * this, so it's null (and in missingRules) until confirmed with set_league_rule.
+     * The optimizer assumes OUT, IR and SUSPENDED meanwhile.
+     */
+    irEligibleStatuses: z.array(InjuryStatus).nullable(),
   }),
   waivers: z.object({
     type: z.enum(["FAAB", "PRIORITY"]).nullable(),
@@ -254,6 +268,8 @@ export const FreeAgent = Player.extend({
   positionalRank: z.number().int().nullable(),
   seasonPoints: z.number().nullable(),
   seasonProjectedPoints: z.number().nullable(),
+  /** For WAIVERS: when he clears, the next claim run (ISO, UTC). Null for free agents. */
+  waiverClears: z.string().nullable(),
 });
 export type FreeAgent = z.infer<typeof FreeAgent>;
 
@@ -268,6 +284,8 @@ export const LineupPlayer = Player.pick({
   /** ISO, UTC; null on a bye. */
   kickoff: z.string().nullable(),
   locked: z.boolean(),
+  droppable: z.boolean(),
+  lastNewsDate: z.string().nullable(),
 });
 export type LineupPlayer = z.infer<typeof LineupPlayer>;
 
@@ -292,11 +310,18 @@ export const OptimalLineup = z.object({
   /** Things to check before lock. */
   risks: z.array(
     z.object({
-      type: z.enum(["GAME_TIME", "NO_PROJECTION", "EMPTY_SLOT"]),
+      /**
+       * GAME_TIME: a questionable or doubtful starter. EMPTY_SLOT: no healthy
+       * player with a projection can fill it. IR_INELIGIBLE: a player in an IR
+       * slot whose status isn't IR-eligible anymore, which blocks adds and claims.
+       * NO_PROJECTION: kept for older clients; the optimizer now reports a
+       * zero-projection best option as an EMPTY_SLOT instead.
+       */
+      type: z.enum(["GAME_TIME", "NO_PROJECTION", "EMPTY_SLOT", "IR_INELIGIBLE"]),
       slot: z.string(),
       player: z.string().nullable(),
       detail: z.string(),
-      /** For EMPTY_SLOT and NO_PROJECTION: the top free agents for that slot this week. */
+      /** For EMPTY_SLOT: the top free agents for that slot this week. */
       freeAgents: z
         .array(
           FreeAgent.pick({
@@ -306,9 +331,25 @@ export const OptimalLineup = z.object({
             injuryStatus: true,
             projectedPoints: true,
             status: true,
+            waiverClears: true,
+          }).extend({
+            /** The player's kickoff this week (ISO, UTC): the deadline for a free-agent add. */
+            kickoff: z.string().nullable(),
           }),
         )
         .optional(),
+      /** A queued claim that would fill this slot. */
+      pendingClaim: z
+        .object({
+          add: z.string(),
+          drop: z.string().nullable(),
+          processesAt: z.string().nullable(),
+        })
+        .optional(),
+      /** Who to drop to make room, when the roster is full. */
+      drop: z.object({ player: z.string(), reason: z.string() }).optional(),
+      /** GAME_TIME: the injury tag may be out of date. */
+      staleTag: z.object({ lastNews: z.string(), reason: z.string() }).optional(),
     }),
   ),
   asOf: z.string(),

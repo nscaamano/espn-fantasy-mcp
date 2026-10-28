@@ -22,7 +22,7 @@ import {
   toTransaction,
   type ProSchedule,
 } from "./map.js";
-import { optimizeLineup } from "./lineup.js";
+import { DEFAULT_IR_ELIGIBLE, optimizeLineup } from "./lineup.js";
 import { applyRules } from "./rules.js";
 import {
   FreeAgent,
@@ -143,35 +143,50 @@ export class FantasyService {
    * A slot the roster can't fill comes with the top free agents for it.
    */
   async getOptimalLineup(league: string, week?: number): Promise<OptimalLineup> {
-    const [settings, roster] = await Promise.all([
+    const [settings, roster, claims] = await Promise.all([
       this.getLeagueSettings(league),
       this.getMyRoster(league, week),
+      // Claims are a refinement: without them the lineup is still right.
+      this.getPendingClaims(league).catch(() => [] as PendingClaim[]),
     ]);
-    const lineup = optimizeLineup(roster, settings.roster.slots);
-    const holes = lineup.risks.filter((r) => r.type === "EMPTY_SLOT" || r.type === "NO_PROJECTION");
+    const r = settings.roster;
+    const lineup = optimizeLineup(roster, r.slots, {
+      // The roster limit is every non-IR slot: starters plus bench. ESPN's
+      // isBenchUnlimited is true even in leagues that enforce this (checked live).
+      rosterMax: Object.values(r.slots).reduce((a, b) => a + b, 0) + r.benchSize,
+      irEligible: r.irEligibleStatuses ?? DEFAULT_IR_ELIGIBLE,
+      pendingClaims: claims,
+      now: this.now(),
+    });
+    // A queued claim already covers its slot, so only open slots get suggestions.
+    const holes = lineup.risks.filter((r) => r.type === "EMPTY_SLOT" && !r.pendingClaim);
     const slots = [...new Set(holes.map((r) => r.slot))];
+    const claimed = new Set(claims.map((c) => c.add?.name).filter((n): n is string => !!n));
     const options = new Map(
       await Promise.all(
         slots.map(async (slot) => {
           // Suggestions are a bonus: a failed lookup still returns the lineup.
-          const fas = await this.getFreeAgents(league, slot, 3, lineup.week).catch(() => null);
-          return [slot, fas] as const;
+          const fas = await this.getFreeAgents(league, slot, 3 + claimed.size, lineup.week).catch(
+            () => null,
+          );
+          return [slot, fas?.filter((f) => !claimed.has(f.name)).slice(0, 3) ?? null] as const;
         }),
       ),
     );
     for (const risk of holes) {
       const fas = options.get(risk.slot);
       if (fas) {
-        risk.freeAgents = fas.map(
-          ({ name, position, proTeam, injuryStatus, projectedPoints, status }) => ({
-            name,
-            position,
-            proTeam,
-            injuryStatus,
-            projectedPoints,
-            status,
-          }),
-        );
+        risk.freeAgents = fas.map((f) => ({
+          name: f.name,
+          position: f.position,
+          proTeam: f.proTeam,
+          injuryStatus: f.injuryStatus,
+          projectedPoints: f.projectedPoints,
+          status: f.status,
+          // A claim is due by the claim run; a free agent by his kickoff.
+          waiverClears: f.waiverClears,
+          kickoff: f.game?.kickoff ?? null,
+        }));
       }
     }
     return OptimalLineup.parse(lineup);

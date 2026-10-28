@@ -1,6 +1,6 @@
 {
   "name": "@nscaamano/espn-fantasy-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Read-only TypeScript client for ESPN fantasy football's undocumented v3 API: league settings, rosters, matchups, free agents, activity and pending claims.",
   "license": "MIT",
   "author": "Nick Caamano",

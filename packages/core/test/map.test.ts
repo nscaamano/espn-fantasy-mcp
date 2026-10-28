@@ -5,6 +5,7 @@ import type { RosterSlot } from "../src/schemas.js";
 const slot = (kickoff: string | null, locked = false): RosterSlot => ({
   slot: "WR",
   locked,
+  droppable: !locked,
   player: {
     id: 1,
     name: "Test Receiver",
@@ -15,6 +16,7 @@ const slot = (kickoff: string | null, locked = false): RosterSlot => ({
     game: kickoff ? { opponent: "OPP", home: true, kickoff } : null,
     projectedPoints: 10,
     actualPoints: null,
+    seasonProjectedPoints: 120,
     percentRostered: 50,
     lastNewsDate: null,
     eligibleSlots: ["WR", "FLEX"],
@@ -35,5 +37,10 @@ describe("lockAtKickoff", () => {
 
   it("never unlocks what ESPN already locked", () => {
     expect(lockAtKickoff(slot("2026-10-26T00:20:00.000Z", true), now).locked).toBe(true);
+  });
+
+  it("makes a player undroppable once his game kicks off", () => {
+    const s = lockAtKickoff(slot("2026-10-25T17:00:00.000Z"), now);
+    expect(s).toMatchObject({ locked: true, droppable: false });
   });
 });

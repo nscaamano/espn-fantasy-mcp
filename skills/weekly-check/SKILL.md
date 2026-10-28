@@ -11,10 +11,15 @@ Uses the espn-fantasy MCP tools. They're read-only, so you recommend moves and t
 
 Use the league the user named, or every league from `list_leagues`. For each one:
 
-1. **`get_league_settings`.** Note the starting slots (`roster.slots`), whether the league is superflex (an `OP` slot), the scoring format and `lineupLock`. If `missingRules` or `conflicts` is non-empty, ask the user before advising, and save the answer with `set_league_rule`. Never carry one league's rules over to another.
+1. **`get_league_settings`.** Note the starting slots (`roster.slots`), whether the league is superflex (an `OP` slot), the scoring format and `lineupLock`. If `missingRules` or `conflicts` is non-empty, ask the user before advising, and save the answer with `set_league_rule`. ESPN never reports `roster.irEligibleStatuses`, so ask once per league which designations its IR slots allow (usually OUT, IR and SUSPENDED; some leagues add DOUBTFUL), and save it. Never carry one league's rules over to another.
 2. **`get_my_roster`** for the current week.
 3. **`get_matchup`** for the projected score on both sides and the margin.
-4. **`get_optimal_lineup`** for the best lineup by projection. It already handles slot eligibility, byes, OUT/IR/SUSPENDED players and locked players, and lists `risks`: questionable starters without a same-time-or-later backup, zero projections and slots nobody can fill. Treat it as the starting point, not the answer: it doesn't know the news.
+4. **`get_optimal_lineup`** for the best lineup by projection. It already handles slot eligibility, byes, OUT/IR/SUSPENDED players, locked players and the user's pending claims, and lists `risks`:
+   - questionable starters without a same-time-or-later backup (`staleTag` means the tag may be out of date, so check the news first);
+   - slots nobody can fill, including a best option projecting 0, with free agents and their deadline (a WAIVERS player by `waiverClears`, a free agent before `kickoff`), or the `pendingClaim` that already covers it;
+   - IR_INELIGIBLE: a player on IR who isn't IR-eligible anymore. This blocks every add and claim, so fix it first.
+
+   With a full roster, it names a `drop` for each pickup. Treat all of this as the starting point, not the answer: it doesn't know the news.
 
 ## 2. Flag problems
 

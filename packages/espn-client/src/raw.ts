@@ -21,6 +21,8 @@ export interface RawPlayer {
   injured?: boolean;
   /** Epoch ms of the player's latest ESPN news item. */
   lastNewsDate?: number;
+  /** False for players on the league's undroppable list. */
+  droppable?: boolean;
   ownership?: {
     percentOwned?: number;
     percentStarted?: number;
@@ -34,6 +36,8 @@ export interface RawPlayerPoolEntry {
   onTeamId?: number;
   status?: string; // FREEAGENT | WAIVERS | ONTEAM
   lineupLocked?: boolean;
+  /** Epoch ms when a player on waivers clears: the next claim run. */
+  waiverProcessDate?: number;
   player?: RawPlayer;
   ratings?: Record<string, { positionalRanking?: number; totalRanking?: number }>;
 }

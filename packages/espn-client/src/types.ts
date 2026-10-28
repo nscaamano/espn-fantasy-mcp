@@ -15,6 +15,8 @@ export interface EspnPlayer {
   injured: boolean;
   /** When ESPN last posted news on the player (ISO, UTC); null if never. */
   lastNewsDate: string | null;
+  /** False if the player is on the league's undroppable list; null if ESPN didn't say. */
+  droppable: boolean | null;
   percentOwned: number | null;
   percentStarted: number | null;
   percentChange: number | null;
@@ -135,6 +137,8 @@ export interface EspnFreeAgent {
   /** FREEAGENT or WAIVERS. */
   status: string;
   positionalRank: number | null;
+  /** For WAIVERS: when he clears, i.e. the next claim run (ISO, UTC). */
+  waiverProcessDate: string | null;
   player: EspnPlayer;
 }
 
