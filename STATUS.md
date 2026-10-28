@@ -1,12 +1,21 @@
 # Status
 
-Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
+Last updated: 2026-10-28 · Design and specs: [docs/design.md](docs/design.md)
 
 **Next session**, in order:
 
-1. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves.
-2. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
-3. **Player lookup by name** (tooling request 5), the next item up in difficulty.
+1. **Optimizer fixes from real use** (2026-10-28). All are additive: new fields and risk types, with no tool or field renames.
+   - **`IR_INELIGIBLE` risk:** a player in an IR slot whose status softened (OUT → QUESTIONABLE) blocks adds and claims. IR-eligible statuses default to OUT/IR/SUSPENDED, via a new rule `roster.irEligibleStatuses` that's in `missingRules` until set. ESPN's settings don't expose it (checked live).
+   - **`droppable` on roster players:** ESPN's `player.droppable` (undroppable list), false once the player's game has kicked off.
+   - **Drop suggestions:** when a pickup is suggested and the roster is full, also suggest the lowest-value droppable bench player. Roster max = the sum of `lineupSlotCounts` excluding IR; ESPN's `isBenchUnlimited` is true even when the app enforces a max.
+   - **`waiverClears` on free agents:** from `playerPoolEntry.waiverProcessDate`, so a waiver suggestion's deadline is the claim run, not kickoff.
+   - **Pending claims in `get_optimal_lineup`:** a claim that fills a flagged slot is attached to the risk, and players being dropped leave the pool.
+   - **Stale-tag flag on GAME_TIME risks:** `lastNewsDate` older than the latest practice-report day of the game week, or than kickoff minus 8 days.
+   - **A 0-projection best option leaves the slot empty** (one `EMPTY_SLOT`, no NO_PROJECTION), without a move that benches him.
+   - **Then publish client and core 0.2.0.**
+2. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves.
+3. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
+4. **Player lookup by name** (tooling request 5), the next item up in difficulty.
 
 ## Done
 
