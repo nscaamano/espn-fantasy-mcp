@@ -149,6 +149,10 @@ Clients that can't launch a local process, like claude.ai custom connectors and 
 - **`GET /health`** is unauthenticated and returns no data, for the host's health checks.
 - **Config comes from the environment:** cookies in `ESPN_S2` and `SWID`, and `LEAGUES_CONFIG` pointing at persistent storage. `LEAGUES_JSON` seeds that file on first start, and later `set_league_rule` writes persist there.
 - **Separate config copies:** a hosted server and a local one each have their own `leagues.json`, so saved rules don't sync between them.
+- **Several people** (`tenants.ts`): each token maps to one person.
+  - The environment's setup is one person. Each folder under `MCP_TENANTS_DIR` (its own `leagues.json` and `.env`) is another.
+  - A folder's service only sees its own `.env`, never the server's environment, so nobody's requests can run on someone else's cookies. A test checks the Cookie header ESPN receives.
+  - Folders are re-read per request, and each person gets their own MCP handler.
 
 ## Skills (step 4)
 

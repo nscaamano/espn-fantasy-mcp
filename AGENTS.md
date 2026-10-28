@@ -69,6 +69,7 @@ Before calling a change done, run build, typecheck, lint and test. CI (`.github/
   - `load.ts` finds `leagues.json` and `.env`, and `seedConfig` writes `LEAGUES_JSON` to `LEAGUES_CONFIG` on first start.
   - `index.ts` is the stdio entry.
   - `http.ts` is the HTTP server: the token check (path or bearer), `/health`, and a bridge to the SDK's `createMcpHandler`. `serve.ts` is its entry point, run by `pnpm start`.
+  - `tenants.ts` maps tokens to people: the environment's setup plus one folder per person under `MCP_TENANTS_DIR`. A folder tenant must never inherit the server's `ESPN_S2`/`SWID` (`folderTenantEnv`).
 - `skills/<name>/SKILL.md`: lineup and waiver judgment lives here, not in code. Core has no opinions. Each file is the single source for two forms:
   - Claude Code loads it through the `.claude/skills/<name>` symlink.
   - `apps/mcp/src/skills.ts` serves the same text as an MCP prompt (`weekly-check` becomes `weekly_check`).

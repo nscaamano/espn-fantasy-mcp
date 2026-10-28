@@ -145,11 +145,12 @@ All configuration comes from environment variables:
 
 | Variable | Meaning |
 | --- | --- |
-| `MCP_AUTH_TOKEN` | Required. A random secret of at least 32 characters, e.g. from `openssl rand -hex 32`. |
+| `MCP_AUTH_TOKEN` | A random secret of at least 32 characters, e.g. from `openssl rand -hex 32`. Several can be listed, comma-separated (say, one per client), so each can be revoked alone. Required unless `MCP_TENANTS_DIR` is set. |
 | `PORT` | Port to listen on (default 3000). |
 | `ESPN_S2`, `SWID` | Your ESPN cookies. |
 | `LEAGUES_CONFIG` | Path to `leagues.json`. Put it on persistent storage so rules saved with `set_league_rule` survive restarts. |
 | `LEAGUES_JSON` | Contents of `leagues.json`, written to `LEAGUES_CONFIG` on first start if that file doesn't exist yet. |
+| `MCP_TENANTS_DIR` | Optional: a folder for more people on the same server (below). |
 
 Endpoints:
 
@@ -159,6 +160,22 @@ Endpoints:
 - Anything else, including a wrong token, gets an empty 404.
 
 The server holds your ESPN cookies, so treat the token URL like a password: anyone with it can read your leagues. To revoke access, change `MCP_AUTH_TOKEN` and restart. The hosted server keeps its own copy of `leagues.json`, so rules saved through it don't show up in your local copy, and the reverse.
+
+#### More than one person
+
+One server can serve several people, each with their own leagues and ESPN cookies. The token decides whose data a request reads, so one person's token can't reach another person's leagues. Under `MCP_TENANTS_DIR`, add a folder per person:
+
+```
+$MCP_TENANTS_DIR/
+  alex/
+    leagues.json    # their leagues and team ids, same format as leagues.example.json
+    .env            # ESPN_S2=…  SWID={…}  MCP_AUTH_TOKEN=…
+```
+
+- The server re-reads the folder on every request, so adding or removing someone needs no restart. Their `set_league_rule` saves go to their own `leagues.json`.
+- A folder's `.env` is the only place its cookies come from. The server's own `ESPN_S2` and `SWID` never apply to it.
+- The setup configured through the environment variables above keeps working alongside the folders.
+- Problems such as a folder with no token, or a token shared by two people, are logged with the folder name, never the token. A shared token is turned off for both.
 
 ### Calling the tools from your own app
 

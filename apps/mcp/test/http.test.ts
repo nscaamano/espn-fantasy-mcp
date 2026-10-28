@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { fixtureFetch } from "../../../packages/espn-client/test/fixtures.js";
 import { createHttpServer, presentedToken } from "../src/http.js";
 import { seedConfig } from "../src/load.js";
+import { staticTenants } from "../src/tenants.js";
 
 const TOKEN = "test-token-0123456789abcdefghijklmnopqrstuvwxyz";
 const config = { leagues: [{ alias: "test", leagueId: 1234, year: 2018, myTeamId: 1 }] };
@@ -21,7 +22,9 @@ async function start() {
   const path = join(dir, "leagues.json");
   writeFileSync(path, JSON.stringify(config));
   const svc = new FantasyService(new EspnClient({ fetch: fixtureFetch().fetch }), loadConfig(path));
-  const server = createHttpServer(() => svc, { token: TOKEN });
+  const server = createHttpServer(
+    staticTenants([{ name: "default", tokens: [TOKEN], service: () => svc }]),
+  );
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   servers.push(server);
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -76,12 +79,6 @@ describe("HTTP server", () => {
       expect(res.status).toBe(404);
       expect(await res.text()).toBe("");
     }
-  });
-
-  it("refuses to start with a short token", () => {
-    expect(() => createHttpServer(() => ({}) as FantasyService, { token: "short" })).toThrow(
-      /at least 32/,
-    );
   });
 });
 

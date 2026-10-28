@@ -38,6 +38,7 @@ Last updated: 2026-10-25 · Design and specs: [docs/design.md](docs/design.md)
   - Verified on a hosted deployment: live ESPN reads work from a cloud host, and claude.ai connects as a custom connector.
   - Provider-specific setup stays out of the repo.
 - [x] **CI** (2026-10-21). GitHub Actions runs build, typecheck, lint, format check and tests on every push and pull request.
+- [x] **Several people per server** (2026-10-28). Each token maps to one person: the environment's setup, plus a folder per person under `MCP_TENANTS_DIR`, each with its own `leagues.json` and `.env` (cookies and token). Folders are re-read per request. `MCP_AUTH_TOKEN` takes comma-separated tokens so each client can be revoked alone. Tests check that a folder tenant's ESPN requests carry its own cookies, never the server owner's.
 - [x] **Network retry** (2026-10-25). espn-client retries once, after 500 ms, on a network failure or a 502/503/504; auth and not-found errors fail at once. Errors now name the cause (`fetch failed (ECONNRESET)`). Prompted by 2026-10-14, when one of ESPN's CDN addresses failed for minutes. A retry opens a new connection, which usually gets another address, but nothing guarantees it.
 - [x] **Live game-day check** (2026-10-25, Sunday night of week 7).
   - Actual points come through as expected: null until a player's game starts, then live.

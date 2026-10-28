@@ -1,26 +1,28 @@
 // HTTP transport for hosting the server remotely, so clients
 // that can't launch a local process, like claude.ai and the Claude mobile apps,
-// can connect. The server holds the user's ESPN cookies, so every MCP request
-// needs the access token: either in the path (/mcp/<token>, for clients that
-// only take a URL) or as `Authorization: Bearer <token>`.
+// can connect. The server holds ESPN cookies, so every MCP request needs an
+// access token: either in the path (/mcp/<token>, for clients that only take a
+// URL) or as `Authorization: Bearer <token>`. The token also picks whose
+// leagues the request reads (see tenants.ts).
 
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer as createNodeServer, type IncomingMessage, type Server } from "node:http";
 import { Readable } from "node:stream";
-import type { FantasyService } from "@nscaamano/espn-fantasy-core";
-import { createMcpHandler } from "@modelcontextprotocol/server";
+import { createMcpHandler, type McpHttpHandler } from "@modelcontextprotocol/server";
 import { createServer, type ServerOptions } from "./server.js";
-
-export const MIN_TOKEN_LENGTH = 32;
-
-export interface HttpOptions extends ServerOptions {
-  /** Shared secret for every MCP request. At least MIN_TOKEN_LENGTH characters. */
-  token: string;
-}
+import type { Tenant, TenantSource } from "./tenants.js";
 
 const digest = (s: string) => createHash("sha256").update(s).digest();
 /** Constant-time comparison; hashing first makes the lengths equal. */
 const sameSecret = (a: string, b: string) => timingSafeEqual(digest(a), digest(b));
+
+/** The tenant owning `token`, comparing against every token in constant time. */
+export function tenantForToken(tenants: Tenant[], token: string): Tenant | null {
+  let match: Tenant | null = null;
+  for (const t of tenants)
+    for (const candidate of t.tokens) if (sameSecret(token, candidate)) match = t;
+  return match;
+}
 
 /** The token from /mcp/<token>, else from a bearer header; null if neither is there. */
 export function presentedToken(path: string, authorization: string | undefined): string | null {
@@ -55,11 +57,18 @@ function toRequest(req: IncomingMessage, url: URL): Request {
  * Anything else, including a wrong token, gets a bare 404 so the endpoint
  * doesn't advertise itself.
  */
-export function createHttpServer(service: () => FantasyService, options: HttpOptions): Server {
-  if (options.token.length < MIN_TOKEN_LENGTH) {
-    throw new Error(`The access token must be at least ${MIN_TOKEN_LENGTH} characters`);
-  }
-  const handler = createMcpHandler(() => createServer(service, options));
+export function createHttpServer(source: TenantSource, options: ServerOptions = {}): Server {
+  // One handler per tenant, created on first use.
+  const handlers = new Map<string, McpHttpHandler>();
+  const handlerFor = (tenant: Tenant) => {
+    let handler = handlers.get(tenant.name);
+    if (!handler) {
+      handler = createMcpHandler(() => createServer(tenant.service, options));
+      handlers.set(tenant.name, handler);
+    }
+    return handler;
+  };
+  let lastErrors = "";
 
   return createNodeServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
@@ -68,12 +77,19 @@ export function createHttpServer(service: () => FantasyService, options: HttpOpt
       return;
     }
     const token = presentedToken(url.pathname, req.headers.authorization);
-    if (token === null || !sameSecret(token, options.token)) {
+    const { tenants, errors } = source();
+    // Log configuration problems when they change, never per request.
+    if (errors.join("\n") !== lastErrors) {
+      lastErrors = errors.join("\n");
+      for (const e of errors) console.error(`tenants: ${e}`);
+    }
+    const tenant = token === null ? null : tenantForToken(tenants, token);
+    if (!tenant) {
       res.writeHead(404).end();
       return;
     }
     try {
-      const response = await handler.fetch(toRequest(req, url));
+      const response = await handlerFor(tenant).fetch(toRequest(req, url));
       res.writeHead(response.status, Object.fromEntries(response.headers));
       if (response.body) {
         Readable.fromWeb(response.body as import("node:stream/web").ReadableStream).pipe(res);
