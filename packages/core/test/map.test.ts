@@ -171,6 +171,28 @@ describe("toWaiverResults", () => {
     expect(claims).toEqual([expect.objectContaining({ result: "CANCELED", bid: 3 })]);
   });
 
+  it("reports the user's latest run when a later daily run had none of their claims", () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const { processedAt, claims } = toWaiverResults(
+      [
+        tx({ teamId: 1, bid: 5, add: player(1) }),
+        tx({ teamId: 8, bid: 2, add: player(2), processDate: RUN + DAY }),
+      ],
+      1,
+      true,
+      names,
+    );
+    expect(processedAt).toBe("2026-10-28T07:20:00.000Z");
+    expect(claims).toEqual([expect.objectContaining({ result: "WON", bid: 5 })]);
+  });
+
+  it("gives the latest run's time when the user had no claims this week", () => {
+    expect(toWaiverResults([tx({ teamId: 8, add: player(2) })], 1, true, names)).toEqual({
+      processedAt: "2026-10-28T07:20:00.000Z",
+      claims: [],
+    });
+  });
+
   it("is empty before any run", () => {
     expect(
       toWaiverResults(
