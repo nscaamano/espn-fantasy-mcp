@@ -10,7 +10,7 @@ packages/
   core/          @nscaamano/espn-fantasy-core: zod schemas, leagues.json config, league rules, lineup optimizer, FantasyService
 apps/
   mcp/           the MCP server: stdio for local clients, Streamable HTTP for hosted ones
-skills/          weekly-check, waivers and scoreboard workflows (Agent Skills; also served as MCP prompts)
+skills/          weekly-check, waivers, trades and scoreboard workflows (Agent Skills; also served as MCP prompts)
 scripts/
   smoke.ts                 live check against your leagues
   port_espn_constants.py   regenerates espn-client/src/constants.ts from espn-api
@@ -74,13 +74,14 @@ The judgment lives in workflows in `skills/`. Each is a `SKILL.md` in the [Agent
 
 - **weekly-check:** flags injured, questionable, bye-week and zero-projection starters, checks the news, and gives start/sit moves per league. Run it before Thursday's game and again on Saturday or Sunday morning.
 - **waivers:** finds roster holes, ranks free agents by fit, and gives FAAB bids or claim order with a named drop for every claim. Run it Monday night or Tuesday, before claims process.
+- **trades:** finds trades both sides could plausibly accept. Fix mode fills a roster hole the waiver wire can't, from another team's surplus; opportunity mode looks for consolidation, buy-low and sell-high deals. Every proposal is valued rest of season under the league's own scoring and gets a fairness check. Run it on demand, or when weekly-check or waivers finds a hole no free agent fills.
 - **scoreboard:** every league's matchup on one screen: a summary table with each side's score, top three scorers and projection, then each league's starters slot by slot. It shows status only, without advice. Use it during or after game windows.
 
 How to run them:
 
-- **Claude Code:** sees them automatically through symlinks in `.claude/skills/`. Ask for "a weekly check", "waiver run" or "my scores", or invoke `/weekly-check`, `/waivers` or `/scoreboard`.
+- **Claude Code:** sees them automatically through symlinks in `.claude/skills/`. Ask for "a weekly check", "waiver run", "find me a trade" or "my scores", or invoke `/weekly-check`, `/waivers`, `/trades` or `/scoreboard`.
 - **Other skills-capable clients:** point them at `skills/`.
-- **Clients without skills:** use the MCP prompts `weekly_check`, `waivers` and `scoreboard`, generated from the same files. Each takes an optional `league` argument.
+- **Clients without skills:** use the MCP prompts `weekly_check`, `waivers`, `trades` and `scoreboard`, generated from the same files. Each takes an optional `league` argument.
 
 Injury news needs the assistant's own web search; without it, the workflows say so and fall back to ESPN's tags.
 

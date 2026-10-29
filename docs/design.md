@@ -20,7 +20,7 @@ packages/
   core/          zod schemas + domain functions + league rules
 apps/
   mcp/           McpServer: tools and prompts over core, via stdio or Streamable HTTP
-skills/          weekly-check, waivers and scoreboard SKILL.md files (trades later)
+skills/          weekly-check, waivers, trades and scoreboard SKILL.md files
 ```
 
 - **Why TypeScript rather than wrapping the Python espn-api:**
@@ -160,7 +160,7 @@ Clients that can't launch a local process, like claude.ai custom connectors and 
 They hold the judgment; the MCP tools only fetch data. Output is a short per-league list of moves for the user to make in the app.
 
 - **Primary form:** `SKILL.md` files in `skills/` (the Agent Skills format), used by Claude Code and other clients that support skills. Claude Code finds them through symlinks in `.claude/skills/`.
-- **Portable form:** the same workflows exposed as MCP **prompts** (`weekly_check`, `waivers`), so any client that supports MCP prompts gets them too. The server reads the `SKILL.md` files at startup, so there's one source and the two forms can't drift apart.
+- **Portable form:** the same workflows exposed as MCP **prompts** (`weekly_check`, `waivers`, `trades`, `scoreboard`), so any client that supports MCP prompts gets them too. The server reads the `SKILL.md` files at startup, so there's one source and the two forms can't drift apart.
   - Each prompt takes an optional `league` and starts with the current time in Eastern, since the advice depends on the day (Tuesday tags, Friday designations, game-day inactives).
 - **Kickoff data:** every player carries this week's `game` (opponent, home or away, kickoff), or null on a bye. The per-player lock and late-game backup rules depend on it.
 - **Injury news** needs the client's own web search. Where a client has none, the workflow says so and falls back to ESPN injury tags, labeled as such.
@@ -193,9 +193,9 @@ They hold the judgment; the MCP tools only fetch data. Output is a short per-lea
 - Don't bid big FAAB on a 4%-rostered player. Save budget for real breakouts after a starter's injury.
 - QBs in superflex: start the two best-projected QBs regardless of name, and check for byes.
 
-## Trades skill (later)
+## Trades skill
 
-For when a lineup hole can't be filled from waivers: scan the other teams and propose trades both sides could plausibly accept. Build it after weekly-check and waivers have run for a few real weeks.
+For when a lineup hole can't be filled from waivers: scan the other teams and propose trades both sides could plausibly accept. Written as `skills/trades/SKILL.md` (served as the `trades` prompt), after weekly-check and waivers had run for a few real weeks.
 
 **When it runs:** suggested automatically when weekly-check or waivers finds a starter hole (a long injury, a bad bye week) and the best free agent projects well below the player being replaced. Also on demand: "find me a WR trade in the superflex league."
 
@@ -210,7 +210,7 @@ For when a lineup hole can't be filled from waivers: scan the other teams and pr
 
 Opportunity mode still applies the fairness check: the leverage is their urgent need, not a lopsided deal. Lopsided offers get rejected or vetoed and sour future trades.
 
-**Reads it uses** (all exist now, read-only): `get_teams` (every team's manager, record, standings, points for, playoff position) and `get_team_roster` (any team's roster, same shape as `get_my_roster`).
+**Reads it uses** (all read-only): `get_league_settings` (scoring, slots, trade deadline, review period, playoff weeks), `get_teams` (every team's manager, record, standings, points for, playoff position), `get_my_roster` and `get_team_roster` (any team's roster, same shape), `get_recent_activity` (who's active, recent trades), `get_pending_claims` (don't trade a player a claim drops) and `get_free_agents` (the bar a trade must clear).
 
 **How it picks trades:**
 
@@ -222,4 +222,6 @@ Opportunity mode still applies the fairness check: the leverage is their urgent 
 
 **Output per proposal:** give and get, my rest-of-season gain, their gain, why it works for them, risks (injury, bye overlap), and a short message to send the manager. The user makes the offer in the ESPN app.
 
-**Open question:** ESPN may not expose rest-of-season projections cleanly (see STATUS.md). If not, derive them from season projections minus weeks played, or pull public rest-of-season rankings by web search, labeled as such.
+**Rest-of-season values:** ESPN's rest-of-season projection is unverified (see STATUS.md), so the skill derives it from `seasonProjectedPoints` ÷ 17 per game times the games left, trusts recent weekly projections where a role changed, and checks public rest-of-season rankings for the league's format by web search, labeled as such. Value is measured over replacement: the best free agent at the position in that league.
+
+**Fairness check, as written:** each side's best starting lineup should gain projected points per week (or fill a real need), and value given and received should be within about 15%. A deal that only works on news the other manager hasn't seen is cut.
