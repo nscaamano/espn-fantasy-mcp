@@ -1,18 +1,29 @@
 # Status
 
-Last updated: 2026-10-28 · Design and specs: [docs/design.md](docs/design.md)
+Last updated: 2026-10-29 · Design and specs: [docs/design.md](docs/design.md)
 
 **Next session**, in order:
 
-1. **Publish client and core 0.3.0** (user: needs the npm two-factor code). Adds `winProbability` to matchup sides and the waiver results (`getTransactions`, `getWaiverResults`); versions are bumped. Run `pnpm publish` in `packages/espn-client`, then `packages/core`. (0.2.0, with the optimizer fixes, is published.)
-2. **Step 4 done-checks:** a real Saturday or Sunday lineup check and a Tuesday waiver run, with the user judging the moves.
-3. **Decide on the proposed `weekly-check` tuning** (under step 4), then apply it.
-4. **Player lookup by name** (tooling request 5), the next item up in difficulty.
+1. **Publish client and core 0.4.0** (user: needs the npm two-factor code). Adds `searchPlayers`/`getPlayer` and the `PlayerInfo`/`PlayerSearch` schemas; versions are bumped. Run `pnpm publish` in `packages/espn-client`, then `packages/core`. (0.3.0 is published.)
+2. **Step 4 done-checks:** a real Saturday or Sunday lineup check (now with the tuned `weekly-check`) and a Tuesday waiver run, with the user judging the moves.
+3. **Run the trades skill live** in a real league and tune it.
+4. **Reconnect cached clients** (Claude's connector, `/mcp` in Claude Code) after the deploy, so they see `get_player`.
 
 **After any deploy that adds output fields:** clients that cache tool schemas (Claude's connectors) reject the new fields ("must NOT have additional properties") until their tool list is refreshed, because zod objects become JSON Schemas with `additionalProperties: false`. Reconnect the connector (or `/mcp` → Reconnect in Claude Code) after deploying. Clients that list tools per session, like the web app, aren't affected.
 
 ## Done
 
+- [x] **Player lookup by name** (tooling request 5, 2026-10-29). `get_player(league, name, limit?, week?)` takes full or partial names and returns players of any status: ROSTERED (team, lineup slot, `isMine`), FREE_AGENT, or WAIVERS (with `waiverClears`), each with the free-agent fields (injury, game, week and season points and projections, % rostered, positional rank).
+  - ESPN's `filterName` on `kona_player_info`, checked live: it matches the start of a first or last name as typed, needs a sort when given a `limit`, and returns every status with `onTeamId`. espn-api has no server-side name search (it downloads every player and matches exact names).
+  - With no hits it retries word by word with loose matching (punctuation and word order ignored), so "AJ Brown" and "Jamarr Chase" work. Exact name matches win, and `totalMatches` flags an ambiguous name.
+  - Slots come from the owners' rosters. `getRoster` now sends `forTeamId`, so one team's roster is about 0.34 MB instead of 3.4 MB, which also speeds up `get_my_roster` and `get_team_roster`.
+  - Verified live in all three leagues: rostered (mine and another team's), free agent, waivers, no match, partial name. The skills and the server instructions point to it for named players.
+- [x] **Trades skill** (2026-10-29). `skills/trades/SKILL.md`, served as the `trades` prompt.
+  - Fix mode fills a hole the waiver wire can't from another team's surplus; opportunity mode covers consolidation, buy-low and sell-high.
+  - Players are valued rest of season under each league's own scoring (reception points, superflex QBs) and over the best free agent. Rest-of-season points are derived from `seasonProjectedPoints` plus web-searched rankings, since ESPN gives no rest-of-season split.
+  - Every proposal gets a fairness check (both lineups gain or fill a need, value within about 15%), respects the deadline and review period, and comes with a message for the other manager.
+  - `weekly-check` and `waivers` suggest it for a hole no free agent fills. Not yet run live.
+- [x] **`get_waiver_results` fix** (2026-10-29): it reports the latest run that has any of the user's claims, not the league's latest. Leagues that also run waivers daily for dropped players had a later run with none of the user's claims, which hid Wednesday's results. Verified live.
 - [x] **`get_waiver_results` tool** (2026-10-28). How the user's claims fared in the week's latest waiver run, from `view=mTransactions2` (the league's transaction log, every team's):
   - A run writes one `PROCESS` record per claim (`EXECUTED` or `FAILED_*`) pointing at its proposal (`relatedTransactionId`), which stays `PENDING` in the log, so only PROCESS and CANCEL records count. Claims processed within an hour of the latest one form the run (daily-waiver leagues have several runs a week).
   - Each claim is WON, LOST (another team's EXECUTED add of the same player in the run: that team and its bid), FAILED (ESPN's status as `reason`) or CANCELED (since the run before; the bid comes from the canceled proposal, since the cancel record says $0). Bids are null in priority leagues. Plus `processedAt` and the user's `waiverRank` now.
@@ -75,10 +86,7 @@ Last updated: 2026-10-28 · Design and specs: [docs/design.md](docs/design.md)
   - [x] `skills/scoreboard/SKILL.md` (2026-10-25): every league's matchup on one screen. A summary table puts each side's top three scorers next to its score, then each league's starters slot by slot with points and projections. It shows status only, without advice. Written from a real Sunday request made from the phone.
   - [ ] Done when one real Tuesday waiver run and one Saturday lineup check produce moves the user would actually make. Tune the `SKILL.md` files from what those runs get wrong.
   - [x] First tuning pass on `waivers` (2026-10-14, from a test run). Injury length comes from news, never from the tag. ESPN's projections and % rostered are inputs, not the answer, so check role, usage and schedule. Drops are judged on role and upside, not % rostered. When streaming, the K or D/ST being replaced is the drop.
-  - [ ] Proposed from the first `weekly-check` run (2026-10-14), not yet applied:
-    - When a flagged starter has no healthy bench backup, check `get_free_agents` for a fill-in with the same or a later kickoff, and name a drop.
-    - Handle a player in an IR slot whose tag softened (for example, IR to DOUBTFUL): tell the user to check whether ESPN still allows him there.
-    - Note that Thursday afternoon, after the Wednesday and Thursday practice reports, is the best time for the first check.
+  - [x] First tuning pass on `weekly-check` (applied 2026-10-29, proposed after the 2026-10-14 run). The first check is Thursday afternoon, after the Wednesday and Thursday practice reports. Pickups use what an `EMPTY_SLOT` risk already carries (`freeAgents`, `pendingClaim`, `drop`). A `GAME_TIME` risk with no late backup, or a starter the news rules out, gets a `get_free_agents` search for a fill-in with the same or a later kickoff, plus a drop judged on role, never the only late backup. IR follows the `IR_INELIGIBLE` risk; when an IR player's tag softened without a risk, the user confirms in the app that ESPN still allows him there.
 - [ ] **Step 5:** use it for 2–3 weeks and note what's missing.
 
 ## Tooling requests (from mobile use, 2026-10-25)
@@ -91,7 +99,7 @@ After a few weeks of use from the Claude iPhone app, the assistant listed the to
    - The stale-OUT theory about reading the wrong field was wrong: the roster entry's own `injuryStatus` reads `NORMAL` for every player in 2026, and the parser already uses the player's. ESPN's read host doesn't cache either (`must-revalidate`, CloudFront misses). The likely cause was the assistant reusing an earlier result, or ESPN's API lagging its app; `asOf` covers the first.
 3. [x] **Free-agent sort by season value** (2026-10-25). `get_free_agents` takes `sort: "week" | "season"`; `season` ranks by ESPN's full-season projection, which surfaces stash candidates. Schedule strength is a separate, medium job (see Matchup strength under ideas). True rest-of-season projections are still an open question.
 4. [x] **Other teams' rosters** (2026-10-25). `get_teams` (record, points, seed, waiver rank, FAAB left) and `get_team_roster` (any team, same shape as `get_my_roster`). These were the data the trades skill needed.
-5. [ ] **Player lookup by name** (`get_player(name, league)`). Small to medium. It returns ownership (which team, or FA/waivers), status and projections. It needs a name filter in the `x-fantasy-filter` request (check espn-api; not yet verified) plus a check against every roster. It also covers breakouts outside the free-agent pool's top 50 (see Free-agent depth).
+5. [x] **Player lookup by name** (2026-10-29): `get_player`, under Done.
 6. [ ] **FAAB bid history by position.** Medium. Winning bids are in `get_recent_activity`, but a season's worth means paging the activity endpoint and aggregating by position and week. Same as FAAB market memory under ideas.
 7. [x] **Lineup optimizer** (2026-10-25). `get_optimal_lineup` (`core/src/lineup.ts`) solves the slot assignment exactly (Hungarian algorithm) over the league's starting slots, with stored rules applied.
    - It excludes byes and OUT/IR/SUSPENDED players, keeps locked players in place, and leaves IR slots alone. Ties keep the current lineup, so it doesn't churn.
@@ -107,10 +115,7 @@ After a few weeks of use from the Claude iPhone app, the assistant listed the to
 
 ## Later
 
-- [ ] **Trades skill.** The data tools exist now (`get_teams`, `get_team_roster`); the skill itself is next.
-  - Fix mode fills my hole from another team's surplus.
-  - Opportunity mode covers consolidation, buy-low and sell-high.
-  - Every proposal gets a fairness check.
+- [x] **Trades skill** (2026-10-29), under Done. Still to do: run it live and tune it.
 - [x] **Publish to npm** (2026-10-25). `@nscaamano/espn-fantasy-client@0.1.0` and `@nscaamano/espn-fantasy-core@0.1.0` are live.
   - Publishing needs 2FA on the npm account. Run `pnpm publish` from each package folder, client first; npm asks for approval in the browser.
   - New packages also get a `0.0.0-stage` placeholder version from npm's staged-publishing system. It's harmless; `latest` points to the real version.
@@ -123,7 +128,7 @@ After a few weeks of use from the Claude iPhone app, the assistant listed the to
 
 - **OAuth for the HTTP mode.** A token in the URL is simple but weaker. claude.ai connectors support OAuth, which would allow per-device revocation and avoid long-lived secrets in URLs.
 - **Rest-of-season projections.** ESPN returns a stat entry with `statSplitTypeId: 3`, season period, projected source, alongside the season projection. It may be rest-of-season; unverified. Check it against ESPN's ROS rankings before building trades.
-- **Free-agent depth.** `getFreeAgents` pulls ESPN's top 50 by % rostered, then re-sorts by projection, so a low-rostered breakout outside the top 50 can be missed. Consider paging, or ESPN's projection sort filter.
+- **Free-agent depth.** `getFreeAgents` pulls ESPN's top 50 by % rostered, then re-sorts by projection, so a low-rostered breakout outside the top 50 can be missed. Consider paging, or ESPN's projection sort filter. A player found through news can now be checked by name with `get_player`.
 - **Waiver process hour.** `acquisitionSettings.waiverProcessHour` is 11 in all three leagues, but it isn't a clock hour in UTC or Eastern time. Every pending claim on 2026-10-13 had `processDate` 07:00 UTC (Wed 3:00 AM ET). `status.waiverProcessStatus` (past runs, keyed by timestamp) shows runs between 07:00 and 08:00 UTC on Wed and some Thu/Fri/Sat/Sun. `status.waiverLastExecutionDate` was Tue 07:24–07:52 UTC, a day not in `waiverProcessDays`. Meaning of 11 unknown. Use a claim's `processesAt` for timing. `get_league_settings` still passes `processHour` through raw; consider replacing it with the last and next run times from `status`.
 - **`get_league_settings` size.** It's about 7 KB (≈2k tokens) per league, mostly scoring items and the team list. Fine for now; if it adds up across three leagues, split standings into `get_teams` (planned for trades anyway) or drop zero-point scoring items. Separately, zod v4 gives every `.int()` field ±2^53 bounds in the tools' JSON Schema, which pads `tools/list`; strip them if tool-list size matters.
 - **Trade activity mapping** (message 244) is ported from espn-api but not yet seen in live data. Verify on the first real trade.

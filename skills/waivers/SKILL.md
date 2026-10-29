@@ -44,7 +44,8 @@ Call `get_free_agents` for each position with a hole, plus OP or QB in superflex
 
 - `status` FREE_AGENT means the user can add the player right now in the app, with no claim needed. Say so.
 - `status` WAIVERS means he needs a claim.
-- The pool is the most-rostered available players, so a barely rostered breakout can be missing. Web-search the week's top pickups if a hole is urgent.
+- The pool is the most-rostered available players, so a barely rostered breakout can be missing. Web-search the week's top pickups if a hole is urgent, and check any name you find, or one the user names, with `get_player`: it says whether he's actually available in this league (FREE_AGENT, or WAIVERS with `waiverClears`) or who has him.
+- **When the wire can't fill a hole** (the best candidate projects well below the starter he replaces, or the injury is long-term), say so and suggest the trades skill for that league.
 
 ## 4. Rank by fit, not just projection
 

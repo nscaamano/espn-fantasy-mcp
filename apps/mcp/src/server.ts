@@ -32,7 +32,7 @@ const { version } = JSON.parse(
 
 export const POSITIONS = ["QB", "RB", "WR", "TE", "FLEX", "OP", "D/ST", "K"] as const;
 
-const INSTRUCTIONS = `Read-only access to the user's ESPN fantasy football leagues. Start with list_leagues for the league aliases. Leagues can have different rules (PPR vs half-PPR, FAAB vs priority waivers, superflex), so call get_league_settings before advising on a league, and never carry one league's rules over to another. If its missingRules or conflicts are non-empty, ask the user and save the answer with set_league_rule. Before recommending waiver claims, call get_pending_claims to see what the user already has queued, so you don't repeat a claim or plan a drop that's already committed. This server can't make moves: recommend lineup changes, claims, bids and drops for the user to make in the ESPN app.`;
+const INSTRUCTIONS = `Read-only access to the user's ESPN fantasy football leagues. Start with list_leagues for the league aliases. Leagues can have different rules (PPR vs half-PPR, FAAB vs priority waivers, superflex), so call get_league_settings before advising on a league, and never carry one league's rules over to another. If its missingRules or conflicts are non-empty, ask the user and save the answer with set_league_rule. Before recommending waiver claims, call get_pending_claims to see what the user already has queued, so you don't repeat a claim or plan a drop that's already committed. For a named player ("who has X", "is X available", "how's X doing"), use get_player rather than scanning rosters. This server can't make moves: recommend lineup changes, claims, bids and drops for the user to make in the ESPN app.`;
 
 const league = z
   .string()
@@ -302,7 +302,7 @@ export function createServer(
     {
       title: "My waiver results",
       description:
-        "How the user's claims fared in a week's latest waiver run in a league. Each claim is WON, LOST (another team got the player: `wonBy` names the team and its winning FAAB bid, which is null in priority-waiver leagues, where the team ahead in waiver priority wins), FAILED (any other reason, in `reason`) or CANCELED (withdrawn before the run). Also returns when the run processed (`processedAt`, null if none has run this week yet) and the user's waiver priority now (`waiverRank`, 1 = first). Use it after claims process (usually Wednesday morning) to report results and find replacements for lost claims with get_free_agents.",
+        "How the user's claims fared in their latest waiver run of a week in a league (some leagues also run waivers daily; a later run without the user's claims doesn't hide this one). Each claim is WON, LOST (another team got the player: `wonBy` names the team and its winning FAAB bid, which is null in priority-waiver leagues, where the team ahead in waiver priority wins), FAILED (any other reason, in `reason`) or CANCELED (withdrawn before the run). Also returns when the run processed (`processedAt`, null if none has run this week yet) and the user's waiver priority now (`waiverRank`, 1 = first). Use it after claims process (usually Wednesday morning) to report results and find replacements for lost claims with get_free_agents.",
       inputSchema: z.object({
         league,
         week: week.describe("NFL week. Defaults to the league's current week."),

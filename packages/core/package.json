@@ -1,6 +1,6 @@
 {
   "name": "@nscaamano/espn-fantasy-core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Zod schemas, league rules discovery, a lineup optimizer and domain functions over ESPN fantasy football. The contract behind espn-fantasy-mcp.",
   "license": "MIT",
   "author": "Nick Caamano",

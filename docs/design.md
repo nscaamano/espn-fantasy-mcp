@@ -211,7 +211,7 @@ For when a lineup hole can't be filled from waivers: scan the other teams and pr
 
 Opportunity mode still applies the fairness check: the leverage is their urgent need, not a lopsided deal. Lopsided offers get rejected or vetoed and sour future trades.
 
-**Reads it uses** (all read-only): `get_league_settings` (scoring, slots, trade deadline, review period, playoff weeks), `get_teams` (every team's manager, record, standings, points for, playoff position), `get_my_roster` and `get_team_roster` (any team's roster, same shape), `get_recent_activity` (who's active, recent trades), `get_pending_claims` (don't trade a player a claim drops) and `get_free_agents` (the bar a trade must clear).
+**Reads it uses** (all read-only): `get_league_settings` (scoring, slots, trade deadline, review period, playoff weeks), `get_teams` (every team's manager, record, standings, points for, playoff position), `get_my_roster` and `get_team_roster` (any team's roster, same shape), `get_player` (a named player: who has him, his slot, injury and projections), `get_recent_activity` (who's active, recent trades), `get_pending_claims` (don't trade a player a claim drops) and `get_free_agents` (the bar a trade must clear).
 
 **How it picks trades:**
 

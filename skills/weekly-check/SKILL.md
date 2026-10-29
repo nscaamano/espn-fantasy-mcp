@@ -60,6 +60,8 @@ If you have no web search, say so, and use the ESPN tags and projections only, l
   - A `GAME_TIME` risk with no bench backup at the same time or later, or a starter the news rules out with nobody healthy behind him, carries none. Call `get_free_agents` for that slot and pick a fill-in who kicks off at the same time or later, so the user can still pivot after inactives.
   - A FREE_AGENT can be added until his kickoff. A WAIVERS player only helps if `waiverClears` comes before his game.
   - With a full roster, name a drop for every pickup. The risk's `drop` is just the lowest season projection, so check his role and upside first, and never drop the only late backup for a questionable starter.
+  - A fill-in the news names (a backup taking over) who isn't in those lists: check him with `get_player`, which says whether he's available in this league or who has him.
+  - A hole no free agent fills (a starter out for weeks, the best free agent far below him): suggest the trades skill for that league.
 - **Superflex:** start the two best-projected QBs regardless of name, and check both for byes.
 - **Default to the safe lineup.** A questionable star sits until news clears him, then gets swapped in. A forgotten swap should never mean a zero. Give the user the deadline for that swap: his kickoff, or inactives about 90 minutes before.
 - **Lineups lock per player at kickoff** (`game.kickoff`), not at the week's first game. A Sunday or Monday player can still be swapped after Thursday's game.

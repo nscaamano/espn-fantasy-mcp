@@ -22,6 +22,7 @@ Trades are per league. Use the league the user named. Otherwise, go through each
 4. **`get_recent_activity`** (limit about 50): who is active, who traded recently (TRADE_SENT, TRADE_RECEIVED) and for what, and who just added depth at a position. A manager with no moves in weeks may never answer an offer.
 5. **`get_pending_claims`**: don't trade away a player a queued claim drops, or count on a claim that hasn't won.
 6. **`get_free_agents`** at the position of need. That's the bar: a trade has to beat the best free agent clearly, or the answer is a claim, not a trade.
+7. **`get_player`** for a player the user names ("what would it take to get X"): who has him, his slot there, his injury and projections.
 
 ## 2. Map needs and surpluses, every team
 
