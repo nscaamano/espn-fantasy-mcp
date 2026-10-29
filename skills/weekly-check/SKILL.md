@@ -5,7 +5,7 @@ description: Check the user's ESPN fantasy football lineups before games lock. F
 
 # Weekly lineup check
 
-Uses the espn-fantasy MCP tools. They're read-only, so you recommend moves and the user makes them in the ESPN app. Run this before the week's first game (usually Thursday), again Saturday or Sunday morning, and whenever the user asks.
+Uses the espn-fantasy MCP tools. They're read-only, so you recommend moves and the user makes them in the ESPN app. Run the first check Thursday afternoon, after the Wednesday and Thursday practice reports and before any Thursday-night starter locks. Run it again Saturday or Sunday morning, and whenever the user asks.
 
 ## 1. Gather, per league
 
@@ -36,7 +36,8 @@ Check every starter, then the bench:
 - **Research:** a starter who is QUESTIONABLE with a normal projection.
 - **Upgrade:** a healthy bench player who projects at least about 2 points more than a starter in a slot he's eligible for (`eligibleSlots`).
 - **IR housekeeping:**
-  - A player in an IR slot who is no longer IR- or OUT-designated has to be activated or dropped. ESPN blocks other roster moves while the IR slot holds an ineligible player.
+  - An `IR_INELIGIBLE` risk: he has to be activated or dropped (with the risk's `drop` if the roster is full) before any add or claim.
+  - A player in an IR slot whose tag softened (say IR to DOUBTFUL) but raises no risk: the check uses the league's saved rule, not ESPN's. Tell the user to confirm in the app that ESPN still allows him there.
   - A bench player who is OUT long-term can move to an open IR slot (`roster.irSlots`) to free a bench spot, if ESPN shows him as IR-eligible.
 - **Locked players:** a player with `locked: true` has kicked off and can't be moved. Mention him only if it matters.
 
@@ -54,7 +55,11 @@ If you have no web search, say so, and use the ESPN tags and projections only, l
 ## 4. Set the lineup
 
 - **Start from `get_optimal_lineup`'s `moves`**, then adjust for the news: a player the news rules out comes out, and a questionable player cleared by the news can go back in. FLEX takes RB, WR or TE. OP (superflex) takes QB, RB, WR or TE.
-- **An `EMPTY_SLOT` risk** means no healthy player on the roster can fill that slot. Check `get_free_agents` for that position, then name the pickup and the drop.
+- **Pickups:**
+  - An `EMPTY_SLOT` risk already carries the options: its `pendingClaim`, or else its `freeAgents` and, with a full roster, a `drop`.
+  - A `GAME_TIME` risk with no bench backup at the same time or later, or a starter the news rules out with nobody healthy behind him, carries none. Call `get_free_agents` for that slot and pick a fill-in who kicks off at the same time or later, so the user can still pivot after inactives.
+  - A FREE_AGENT can be added until his kickoff. A WAIVERS player only helps if `waiverClears` comes before his game.
+  - With a full roster, name a drop for every pickup. The risk's `drop` is just the lowest season projection, so check his role and upside first, and never drop the only late backup for a questionable starter.
 - **Superflex:** start the two best-projected QBs regardless of name, and check both for byes.
 - **Default to the safe lineup.** A questionable star sits until news clears him, then gets swapped in. A forgotten swap should never mean a zero. Give the user the deadline for that swap: his kickoff, or inactives about 90 minutes before.
 - **Lineups lock per player at kickoff** (`game.kickoff`), not at the week's first game. A Sunday or Monday player can still be swapped after Thursday's game.
