@@ -6,7 +6,7 @@ Last updated: 2026-10-29 · Design and specs: [docs/design.md](docs/design.md)
 
 1. **Publish client and core 0.4.0** (user: needs the npm two-factor code). Adds `searchPlayers`/`getPlayer` and the `PlayerInfo`/`PlayerSearch` schemas; versions are bumped. Run `pnpm publish` in `packages/espn-client`, then `packages/core`. (0.3.0 is published.)
 2. **Step 4 done-checks:** a real Saturday or Sunday lineup check (now with the tuned `weekly-check`) and a Tuesday waiver run, with the user judging the moves.
-3. **Run the trades skill live** in a real league and tune it.
+3. **Test the trades skill by hand** (user): run `/trades` (or ask through the connector) in a real league a few times, and tune the skill from what it gets wrong. Only then consider automating it: a scheduled Claude routine that runs it weekly and emails the proposals is the cheapest option. The web app can't run skills, since it has no model.
 4. **Reconnect cached clients** (Claude's connector, `/mcp` in Claude Code) after the deploy, so they see `get_player`.
 
 **After any deploy that adds output fields:** clients that cache tool schemas (Claude's connectors) reject the new fields ("must NOT have additional properties") until their tool list is refreshed, because zod objects become JSON Schemas with `additionalProperties: false`. Reconnect the connector (or `/mcp` → Reconnect in Claude Code) after deploying. Clients that list tools per session, like the web app, aren't affected.
