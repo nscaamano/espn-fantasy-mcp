@@ -275,6 +275,36 @@ export const FreeAgent = Player.extend({
 });
 export type FreeAgent = z.infer<typeof FreeAgent>;
 
+/** Any player in the league's pool, with who has him. */
+export const PlayerInfo = FreeAgent.extend({
+  /** ROSTERED (see `team`), FREE_AGENT (can be added now) or WAIVERS (needs a claim). */
+  status: z.enum(["ROSTERED", "FREE_AGENT", "WAIVERS"]),
+  /** For ROSTERED: the team, his lineup slot this week (null if unknown), and whether it's the user's. */
+  team: z
+    .object({
+      id: z.number().int(),
+      name: z.string(),
+      slot: z.string().nullable(),
+      isMine: z.boolean(),
+    })
+    .nullable(),
+});
+export type PlayerInfo = z.infer<typeof PlayerInfo>;
+
+/** A name lookup. Several players can match a partial or shared name. */
+export const PlayerSearch = z.object({
+  league: z.string(),
+  /** The name as asked. */
+  query: z.string(),
+  week: z.number().int(),
+  /** Exact name matches if any, else every player whose name starts that way; most rostered first. */
+  players: z.array(PlayerInfo),
+  /** How many players matched (counting at most 50); more than `players` means the name was ambiguous. */
+  totalMatches: z.number().int(),
+  asOf: z.string(),
+});
+export type PlayerSearch = z.infer<typeof PlayerSearch>;
+
 export const LineupPlayer = Player.pick({
   id: true,
   name: true,

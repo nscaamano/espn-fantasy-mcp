@@ -34,6 +34,51 @@ describe("EspnClient requests", () => {
     expect(calls[0]!.url.searchParams.get("scoringPeriodId")).toBe("1");
   });
 
+  it("searches players by name in every status, with a sort so ESPN accepts the limit", async () => {
+    const { fetch, calls } = fixtureFetch();
+    const found = await new EspnClient({ fetch }).searchPlayers(1, 2018, "  Pat   Sample ", 1);
+    const filter = JSON.parse(calls[0]!.headers["x-fantasy-filter"]!);
+    expect(filter.players).toMatchObject({
+      filterName: { value: "Pat Sample" },
+      limit: 50,
+      sortPercOwned: { sortPriority: 1, sortAsc: false },
+    });
+    expect(filter.players.filterStatus).toBeUndefined();
+    expect(calls[0]!.url.searchParams.get("scoringPeriodId")).toBe("1");
+    // "Pat Sampleton" also starts that way; the two exact matches win.
+    expect(found.map((p) => p.player.id)).toEqual([9002, 9003]);
+  });
+
+  it("returns every prefix match when none is exact", async () => {
+    const { fetch } = fixtureFetch();
+    const found = await new EspnClient({ fetch }).searchPlayers(1, 2018, "pat", 1);
+    expect(found.map((p) => p.player.name)).toEqual(["Pat Sample", "Pat Sample", "Pat Sampleton"]);
+  });
+
+  it("retries word by word when ESPN finds nothing as typed", async () => {
+    const { fetch, calls } = fixtureFetch();
+    const found = await new EspnClient({ fetch }).searchPlayers(1, 2018, "AJ Tester", 1);
+    expect(found.map((p) => p.player.name)).toEqual(["A.J. Tester"]);
+    const names = calls.map((c) => JSON.parse(c.headers["x-fantasy-filter"]!).players.filterName);
+    expect(names.map((n) => n.value)).toEqual(["AJ Tester", "tester", "aj"]);
+  });
+
+  it("finds nothing for an unknown name, and skips ESPN for punctuation alone", async () => {
+    const { fetch, calls } = fixtureFetch();
+    const client = new EspnClient({ fetch });
+    await expect(client.searchPlayers(1, 2018, "Nobody Atall", 1)).resolves.toEqual([]);
+    calls.length = 0;
+    await expect(client.searchPlayers(1, 2018, " .. ", 1)).resolves.toEqual([]);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("asks ESPN for one team's roster only", async () => {
+    const { fetch, calls } = fixtureFetch();
+    const roster = await new EspnClient({ fetch }).getRoster(1, 2018, 2, 1);
+    expect(calls[0]!.url.searchParams.get("forTeamId")).toBe("2");
+    expect(roster.teamId).toBe(2);
+  });
+
   it("rejects unknown positions before calling ESPN", async () => {
     const { fetch, calls } = fixtureFetch();
     await expect(new EspnClient({ fetch }).getFreeAgents(1, 2018, "LONGSNAPPER")).rejects.toThrow(

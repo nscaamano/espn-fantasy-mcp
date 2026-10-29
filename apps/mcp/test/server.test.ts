@@ -49,6 +49,7 @@ describe("MCP server", () => {
       "get_my_roster",
       "get_optimal_lineup",
       "get_pending_claims",
+      "get_player",
       "get_recent_activity",
       "get_scoreboard",
       "get_team_roster",
@@ -131,6 +132,21 @@ describe("MCP server", () => {
     const out = res.structuredContent as { position: string; freeAgents: unknown[] };
     expect(out.position).toBe("WR");
     expect(out.freeAgents).toHaveLength(3);
+  });
+
+  it("looks up a player by name, with ownership", async () => {
+    const { call } = await connect();
+    const res = await call("get_player", { league: "test", name: "antonio brown", week: 1 });
+    expect(res.isError).toBeFalsy();
+    expect(res.structuredContent).toMatchObject({
+      query: "antonio brown",
+      totalMatches: 1,
+      players: [{ name: "Antonio Brown", status: "ROSTERED", team: { slot: "WR", isMine: true } }],
+    });
+    const none = await call("get_player", { league: "test", name: "Nobody Atall", week: 1 });
+    expect(none.structuredContent).toMatchObject({ players: [], totalMatches: 0 });
+    const short = await call("get_player", { league: "test", name: " x " });
+    expect(short.isError).toBe(true);
   });
 
   it("returns my pending claims, and an empty list when none are queued", async () => {

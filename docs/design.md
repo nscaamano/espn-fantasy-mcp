@@ -114,6 +114,7 @@ All tools are read-only toward ESPN. `league` accepts an alias from `leagues.jso
 | `get_teams` | league | every team: record, points, seed, waiver rank, FAAB left |
 | `get_team_roster` | league, teamId, week? | any team's roster, same shape as `get_my_roster` |
 | `get_free_agents` | league, position?, limit?, sort? | top available by week (default) or full-season projection; waiver vs FA status |
+| `get_player` | league, name, limit?, week? | players by full or partial name, any status: ROSTERED (team, lineup slot, `isMine`), FREE_AGENT or WAIVERS (`waiverClears`), with the free-agent fields (injury, game, week and season points and projections, % rostered, positional rank). ESPN's `filterName` on `kona_player_info` (prefix of a first or last name, as typed); with no hits, a retry per word with loose matching (punctuation and word order ignored). Exact name matches win; `totalMatches` flags an ambiguous name. Slots come from the owners' rosters (`mRoster` with `forTeamId`) |
 | `get_recent_activity` | league, limit? | recent adds, drops, waiver results with bids, trades |
 | `get_pending_claims` | league | my queued claims: add, drop (and the slot it leaves), bid (null in priority leagues), submitted and processing times. ESPN exposes no claim order |
 | `get_waiver_results` | league, week? | my claims in the week's latest waiver run (`mTransactions2`): WON, LOST (winning team and bid), FAILED (reason) or CANCELED; `processedAt`; my `waiverRank` now |

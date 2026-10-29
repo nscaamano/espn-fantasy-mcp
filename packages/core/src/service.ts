@@ -17,6 +17,7 @@ import {
   splitLineup,
   toFreeAgent,
   toLeagueSettings,
+  toPlayerInfo,
   lockAtKickoff,
   toPendingClaim,
   toTransaction,
@@ -31,6 +32,7 @@ import {
   LeagueSettings,
   Matchup,
   PendingClaim,
+  PlayerSearch,
   Roster,
   RuleKey,
   OptimalLineup,
@@ -287,6 +289,57 @@ export class FantasyService {
         );
       })
       .slice(0, limit);
+  }
+
+  /**
+   * Players by name, in any status: who has each one (team and lineup slot) or
+   * whether he's a free agent or on waivers, plus status and projections.
+   * Exact name matches win; otherwise up to `limit` players whose name starts
+   * that way, most rostered first.
+   */
+  async getPlayer(league: string, name: string, limit = 5, week?: number): Promise<PlayerSearch> {
+    const cfg = findLeague(this.config, league);
+    const settings = await this.espnSettings(cfg);
+    const w = week ?? settings.currentWeek;
+    const [found, schedule] = await Promise.all([
+      this.client.searchPlayers(cfg.leagueId, cfg.year, name, w),
+      this.proSchedule(cfg.year),
+    ]);
+    const players = found.slice(0, limit);
+    // Slots come from each owning team's roster; without one, the slot is null.
+    const teamIds = [...new Set(players.map((p) => p.onTeamId).filter((id) => id !== null))];
+    const rosters = new Map(
+      await Promise.all(
+        teamIds.map(
+          async (id) =>
+            [
+              id,
+              await this.client.getRoster(cfg.leagueId, cfg.year, id, w).catch(() => null),
+            ] as const,
+        ),
+      ),
+    );
+    return PlayerSearch.parse({
+      league: cfg.alias,
+      query: name,
+      week: w,
+      players: players.map((p) => {
+        const team =
+          p.onTeamId === null
+            ? null
+            : {
+                id: p.onTeamId,
+                name: this.teamName(settings, p.onTeamId),
+                slot:
+                  rosters.get(p.onTeamId)?.entries.find((e) => e.player.id === p.player.id)?.slot ??
+                  null,
+                isMine: p.onTeamId === cfg.myTeamId,
+              };
+        return toPlayerInfo(p, schedule, w, team);
+      }),
+      totalMatches: found.length,
+      asOf: this.now().toISOString(),
+    });
   }
 
   /** Recent adds, drops, waiver results with FAAB bids, and trades. Newest first. */

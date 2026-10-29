@@ -1,0 +1,327 @@
+{
+  "players": [
+    {
+      "id": 13934,
+      "onTeamId": 1,
+      "status": "ONTEAM",
+      "lineupLocked": false,
+      "rosterLocked": false,
+      "tradeLocked": false,
+      "ratings": {
+        "0": {
+          "positionalRanking": 3,
+          "totalRanking": 9
+        }
+      },
+      "player": {
+        "id": 13934,
+        "active": true,
+        "firstName": "Antonio",
+        "lastName": "Brown",
+        "fullName": "Antonio Brown",
+        "defaultPositionId": 3,
+        "eligibleSlots": [
+          3,
+          4,
+          5,
+          23,
+          7,
+          20,
+          21
+        ],
+        "proTeamId": 23,
+        "injuryStatus": "ACTIVE",
+        "injured": false,
+        "droppable": true,
+        "lastNewsDate": 1536400000000,
+        "ownership": {
+          "percentOwned": 99.1,
+          "percentStarted": 49.55,
+          "percentChange": 1.5
+        },
+        "stats": [
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 1,
+            "statSourceId": 1,
+            "statSplitTypeId": 1,
+            "appliedTotal": 18.5
+          },
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 1,
+            "statSourceId": 0,
+            "statSplitTypeId": 1,
+            "appliedTotal": 22.4
+          },
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 0,
+            "statSourceId": 1,
+            "statSplitTypeId": 0,
+            "appliedTotal": 321.9
+          },
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 0,
+            "statSourceId": 0,
+            "statSplitTypeId": 0,
+            "appliedTotal": 323.7
+          }
+        ]
+      }
+    },
+    {
+      "id": 9002,
+      "onTeamId": 0,
+      "status": "FREEAGENT",
+      "lineupLocked": false,
+      "rosterLocked": false,
+      "tradeLocked": false,
+      "ratings": {
+        "0": {
+          "positionalRanking": 40,
+          "totalRanking": 120
+        }
+      },
+      "player": {
+        "id": 9002,
+        "active": true,
+        "firstName": "Pat",
+        "lastName": "Sample",
+        "fullName": "Pat Sample",
+        "defaultPositionId": 2,
+        "eligibleSlots": [
+          2,
+          3,
+          23,
+          7,
+          20,
+          21
+        ],
+        "proTeamId": 12,
+        "injuryStatus": "ACTIVE",
+        "injured": false,
+        "droppable": true,
+        "lastNewsDate": 1536400000000,
+        "ownership": {
+          "percentOwned": 30.2,
+          "percentStarted": 15.1,
+          "percentChange": 1.5
+        },
+        "stats": [
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 1,
+            "statSourceId": 1,
+            "statSplitTypeId": 1,
+            "appliedTotal": 9.1
+          },
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 0,
+            "statSourceId": 1,
+            "statSplitTypeId": 0,
+            "appliedTotal": 120.5
+          },
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 0,
+            "statSourceId": 0,
+            "statSplitTypeId": 0,
+            "appliedTotal": 61.3
+          }
+        ]
+      }
+    },
+    {
+      "id": 9001,
+      "onTeamId": 0,
+      "status": "WAIVERS",
+      "waiverProcessDate": 1536652800000,
+      "lineupLocked": false,
+      "rosterLocked": false,
+      "tradeLocked": false,
+      "ratings": {
+        "0": {
+          "positionalRanking": 55,
+          "totalRanking": 165
+        }
+      },
+      "player": {
+        "id": 9001,
+        "active": true,
+        "firstName": "A.J.",
+        "lastName": "Tester",
+        "fullName": "A.J. Tester",
+        "defaultPositionId": 3,
+        "eligibleSlots": [
+          3,
+          4,
+          5,
+          23,
+          7,
+          20,
+          21
+        ],
+        "proTeamId": 17,
+        "injuryStatus": "QUESTIONABLE",
+        "injured": true,
+        "droppable": true,
+        "lastNewsDate": 1536400000000,
+        "ownership": {
+          "percentOwned": 12.3,
+          "percentStarted": 6.15,
+          "percentChange": 1.5
+        },
+        "stats": [
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 1,
+            "statSourceId": 1,
+            "statSplitTypeId": 1,
+            "appliedTotal": 7.2
+          },
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 0,
+            "statSourceId": 1,
+            "statSplitTypeId": 0,
+            "appliedTotal": 88.4
+          },
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 0,
+            "statSourceId": 0,
+            "statSplitTypeId": 0,
+            "appliedTotal": 30.1
+          }
+        ]
+      }
+    },
+    {
+      "id": 9003,
+      "onTeamId": 2,
+      "status": "ONTEAM",
+      "lineupLocked": false,
+      "rosterLocked": false,
+      "tradeLocked": false,
+      "ratings": {
+        "0": {
+          "positionalRanking": 30,
+          "totalRanking": 90
+        }
+      },
+      "player": {
+        "id": 9003,
+        "active": true,
+        "firstName": "Pat",
+        "lastName": "Sample",
+        "fullName": "Pat Sample",
+        "defaultPositionId": 4,
+        "eligibleSlots": [
+          5,
+          6,
+          23,
+          7,
+          20,
+          21
+        ],
+        "proTeamId": 2,
+        "injuryStatus": "ACTIVE",
+        "injured": false,
+        "droppable": true,
+        "lastNewsDate": 1536400000000,
+        "ownership": {
+          "percentOwned": 5.1,
+          "percentStarted": 2.55,
+          "percentChange": 1.5
+        },
+        "stats": [
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 1,
+            "statSourceId": 1,
+            "statSplitTypeId": 1,
+            "appliedTotal": 3.3
+          },
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 0,
+            "statSourceId": 1,
+            "statSplitTypeId": 0,
+            "appliedTotal": 40.2
+          },
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 0,
+            "statSourceId": 0,
+            "statSplitTypeId": 0,
+            "appliedTotal": 12.6
+          }
+        ]
+      }
+    },
+    {
+      "id": 9004,
+      "onTeamId": 0,
+      "status": "FREEAGENT",
+      "lineupLocked": false,
+      "rosterLocked": false,
+      "tradeLocked": false,
+      "ratings": {
+        "0": {
+          "positionalRanking": 35,
+          "totalRanking": 105
+        }
+      },
+      "player": {
+        "id": 9004,
+        "active": true,
+        "firstName": "Pat",
+        "lastName": "Sampleton",
+        "fullName": "Pat Sampleton",
+        "defaultPositionId": 1,
+        "eligibleSlots": [
+          0,
+          7,
+          20,
+          21
+        ],
+        "proTeamId": 5,
+        "injuryStatus": "ACTIVE",
+        "injured": false,
+        "droppable": true,
+        "lastNewsDate": 1536400000000,
+        "ownership": {
+          "percentOwned": 1,
+          "percentStarted": 0.5,
+          "percentChange": 1.5
+        },
+        "stats": [
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 1,
+            "statSourceId": 1,
+            "statSplitTypeId": 1,
+            "appliedTotal": 0
+          },
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 0,
+            "statSourceId": 1,
+            "statSplitTypeId": 0,
+            "appliedTotal": 2.1
+          },
+          {
+            "seasonId": 2018,
+            "scoringPeriodId": 0,
+            "statSourceId": 0,
+            "statSplitTypeId": 0,
+            "appliedTotal": 0
+          }
+        ]
+      }
+    }
+  ]
+}

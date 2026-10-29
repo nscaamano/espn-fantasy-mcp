@@ -144,6 +144,14 @@ export interface EspnFreeAgent {
   player: EspnPlayer;
 }
 
+/** A player from the league's pool, any status (see EspnClient.searchPlayers). */
+export interface EspnPoolPlayer extends EspnFreeAgent {
+  /** FREEAGENT, WAIVERS or ONTEAM. */
+  status: string;
+  /** The fantasy team he's on; null when he's not on one. */
+  onTeamId: number | null;
+}
+
 export type EspnActivityAction =
   "FA ADDED" | "WAIVER ADDED" | "DROPPED" | "TRADE SENT" | "TRADE RECEIVED" | "UNKNOWN";
 

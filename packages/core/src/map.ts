@@ -8,6 +8,7 @@ import type {
   EspnLeagueSettings,
   EspnPendingClaim,
   EspnPlayer,
+  EspnPoolPlayer,
   EspnProTeam,
   EspnRosterEntry,
   EspnTeam,
@@ -21,6 +22,7 @@ import type {
   LeagueSettings,
   PendingClaim,
   Player,
+  PlayerInfo,
   RosterSlot,
   Team,
   Transaction,
@@ -259,6 +261,17 @@ export function toFreeAgent(fa: EspnFreeAgent, schedule: ProSchedule, week: numb
     seasonProjectedPoints: fa.player.season.projected,
     waiverClears: fa.status === "WAIVERS" ? fa.waiverProcessDate : null,
   };
+}
+
+/** `team` is the fantasy team he's on (with his slot there), or null. */
+export function toPlayerInfo(
+  p: EspnPoolPlayer,
+  schedule: ProSchedule,
+  week: number,
+  team: PlayerInfo["team"],
+): PlayerInfo {
+  const fa = toFreeAgent(p, schedule, week);
+  return team ? { ...fa, status: "ROSTERED", waiverClears: null, team } : { ...fa, team: null };
 }
 
 const ACTIONS: Record<EspnActivityAction, TransactionAction> = {

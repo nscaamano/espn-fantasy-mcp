@@ -19,8 +19,11 @@ export function fixtureFetch() {
     let body: unknown;
     if (url.pathname.includes("/communication")) body = fixture("recent_activity.json");
     else if (views.includes("proTeamSchedules_wl")) body = fixture("pro_schedule.json");
-    else if (views.includes("kona_player_info")) body = fixture("free_agents.json");
-    else if (views.includes("kona_playercard")) body = fixture("player_card.json");
+    else if (views.includes("kona_player_info")) {
+      const filter = headers["x-fantasy-filter"];
+      const name = filter && JSON.parse(filter).players?.filterName?.value;
+      body = name ? searchByName(name) : fixture("free_agents.json");
+    } else if (views.includes("kona_playercard")) body = fixture("player_card.json");
     else if (views.includes("mMatchupScore")) body = fixture("boxscore.json");
     else if (views.includes("mPendingTransactions")) body = fixture("pending_transactions.json");
     else if (views.includes("mTransactions2")) body = fixture("transactions.json");
@@ -28,4 +31,23 @@ export function fixtureFetch() {
     return new Response(JSON.stringify(body), { status: 200 });
   };
   return { fetch: impl as typeof fetch, calls };
+}
+
+interface SearchEntry {
+  player: { firstName: string; lastName: string; fullName: string };
+}
+
+/**
+ * ESPN's name filter, as seen live: case-insensitive, matching the start of
+ * the full name or of the last name, punctuation as typed.
+ */
+function searchByName(name: string) {
+  const q = name.toLowerCase();
+  const { players } = fixture<{ players: SearchEntry[] }>("player_search.json");
+  return {
+    players: players.filter(
+      ({ player: p }) =>
+        p.fullName.toLowerCase().startsWith(q) || p.lastName.toLowerCase().startsWith(q),
+    ),
+  };
 }

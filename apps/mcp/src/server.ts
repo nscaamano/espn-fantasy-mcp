@@ -12,6 +12,7 @@ import {
   Matchup,
   OptimalLineup,
   PendingClaim,
+  PlayerSearch,
   WaiverResults,
   Roster,
   RuleKey,
@@ -179,6 +180,34 @@ export function createServer(
       annotations: READ,
     },
     async (args) => result(await service().getTeamRoster(args.league, args.teamId, args.week)),
+  );
+
+  server.registerTool(
+    "get_player",
+    {
+      title: "Look up a player",
+      description: `Find any player in a league by name, whoever has him: \`status\` is ROSTERED (\`team\` gives the team, his lineup slot there such as QB, FLEX, BE or IR, and \`isMine\` for the user's team), FREE_AGENT (can be added now) or WAIVERS (needs a claim; he clears at \`waiverClears\`). Each player also has position, NFL team, injury status, bye week, this week's game, projected and actual points for the week, season points and projection, % rostered and its recent change, and positional rank. Use it for "who has X", "how is X doing", or to check a player before a trade or claim, including one too little rostered to appear in get_free_agents. Partial names work ("Vidal", "St. Brown") and punctuation is optional ("AJ Brown"). If any players match the name exactly, only they are returned (two players can share a name); otherwise every player whose first or last name starts that way, most rostered first. An empty \`players\` list means no match: check the spelling. When \`totalMatches\` is more than \`players\`, the name was ambiguous: ask which one, or retry with the full name. ${FRESHNESS}`,
+      inputSchema: z.object({
+        league,
+        name: z
+          .string()
+          .trim()
+          .min(2)
+          .describe('Player name, full or partial, e.g. "Kimani Vidal", "Vidal" or "Bills D/ST".'),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(25)
+          .default(5)
+          .describe("Most players to return when several match (1–25, default 5)."),
+        week,
+      }),
+      outputSchema: PlayerSearch,
+      annotations: READ,
+    },
+    async (args) =>
+      result(await service().getPlayer(args.league, args.name, args.limit, args.week)),
   );
 
   server.registerTool(

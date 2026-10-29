@@ -61,6 +61,7 @@ If the team id is wrong, the error message lists every team in the league with i
 | `get_teams` | every team in a league: record, points, seed, waiver rank, FAAB left |
 | `get_team_roster` | any team's roster, same shape as `get_my_roster` |
 | `get_free_agents` | best available at a position by this week's or the season's projection, free agent vs waivers |
+| `get_player` | any player by name (partial names work): who has him and in which slot, or free agent or on waivers (and when he clears), with status and projections |
 | `get_recent_activity` | adds, drops, waiver claims with FAAB bids, trades |
 | `get_pending_claims` | your queued waiver claims: add, drop, bid and when they process |
 | `get_waiver_results` | how your claims fared in the latest waiver run: won, lost (to whom, for how much) or failed, and your waiver priority now |

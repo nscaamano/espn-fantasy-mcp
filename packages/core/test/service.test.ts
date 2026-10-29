@@ -104,6 +104,60 @@ describe("FantasyService", () => {
     expect(JSON.parse(req.headers["x-fantasy-filter"]!).players.limit).toBe(50);
   });
 
+  it("looks up a rostered player with his team and slot", async () => {
+    const { svc, calls } = service();
+    const found = await svc.getPlayer("test", "Antonio Brown", 5, 1);
+    expect(found).toMatchObject({
+      league: "test",
+      query: "Antonio Brown",
+      week: 1,
+      totalMatches: 1,
+    });
+    expect(found.players[0]).toMatchObject({
+      name: "Antonio Brown",
+      status: "ROSTERED",
+      team: { id: 1, name: "Goin' HAM Newton", slot: "WR", isMine: false },
+      projectedPoints: 18.5,
+      actualPoints: 22.4,
+      seasonPoints: 323.7,
+      positionalRank: 3,
+      waiverClears: null,
+      game: { opponent: "ATL" },
+    });
+    // The slot comes from the owner's roster alone.
+    const rosterReqs = calls.filter((c) => c.url.searchParams.getAll("view").includes("mRoster"));
+    expect(rosterReqs.map((c) => c.url.searchParams.get("forTeamId"))).toEqual(["1"]);
+  });
+
+  it("returns every player sharing a name, marking the user's", async () => {
+    const found = await service(2).svc.getPlayer("test", "pat sample", 5, 1);
+    expect(found.totalMatches).toBe(2);
+    expect(found.players.map((p) => [p.position, p.status, p.team])).toEqual([
+      ["RB", "FREE_AGENT", null],
+      // Not on team 2's fixture roster, so the slot is unknown.
+      ["TE", "ROSTERED", { id: 2, name: expect.any(String), slot: null, isMine: true }],
+    ]);
+  });
+
+  it("reports when a waiver player clears, and trims a partial name's matches", async () => {
+    const svc = service().svc;
+    const [tester] = (await svc.getPlayer("test", "AJ Tester", 5, 1)).players;
+    expect(tester).toMatchObject({
+      status: "WAIVERS",
+      team: null,
+      waiverClears: "2018-09-11T08:00:00.000Z",
+      injuryStatus: "QUESTIONABLE",
+    });
+    const pat = await svc.getPlayer("test", "Pat", 2, 1);
+    expect(pat.players).toHaveLength(2);
+    expect(pat.totalMatches).toBe(3);
+  });
+
+  it("returns no players for an unknown name", async () => {
+    const found = await service().svc.getPlayer("test", "Nobody Atall", 5, 1);
+    expect(found).toMatchObject({ players: [], totalMatches: 0 });
+  });
+
   it("maps injury statuses to the schema's enum", async () => {
     const fas = await service().svc.getFreeAgents("test", "WR", 8, 1);
     const statuses = new Set(fas.map((f) => f.injuryStatus));

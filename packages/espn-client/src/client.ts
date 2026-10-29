@@ -12,9 +12,11 @@ import {
   parsePendingClaims,
   parseTransactions,
   parsePlayer,
+  parsePlayerPool,
   parseProTeams,
   parseRosters,
 } from "./parse.js";
+import { nameKey, nameMatches, nameWords } from "./names.js";
 import { slotIdForPosition } from "./positions.js";
 import type { RawCommunication, RawLeague, RawProSchedule } from "./raw.js";
 import type {
@@ -23,6 +25,7 @@ import type {
   EspnLeagueSettings,
   EspnMatchup,
   EspnPendingClaim,
+  EspnPoolPlayer,
   EspnTransaction,
   EspnPlayer,
   EspnProTeam,
@@ -57,7 +60,12 @@ interface LeagueGetOptions {
   filter?: unknown;
   /** Path appended to the league URL, e.g. "/communication/". */
   extend?: string;
+  /** Limits mRoster to one team (a tenth of the all-teams response). */
+  forTeamId?: number;
 }
+
+/** How many players a name search asks ESPN for. */
+const SEARCH_LIMIT = 50;
 
 export class EspnClient {
   private readonly baseUrl: string;
@@ -98,19 +106,25 @@ export class EspnClient {
     return parseLeagueSettings(raw, leagueId, year);
   }
 
-  /** One team's roster for a week (defaults to the current week). */
+  /**
+   * One team's roster for a week (defaults to the current week). `forTeamId`
+   * makes ESPN send that team alone, a tenth of the all-teams response; it
+   * sends no teams for an unknown id.
+   */
   async getRoster(
     leagueId: number,
     year: number,
     teamId: number,
     week?: number,
   ): Promise<EspnRoster> {
-    const rosters = await this.getRosters(leagueId, year, week);
-    const roster = rosters.find((r) => r.teamId === teamId);
-    if (!roster) {
-      const ids = rosters.map((r) => r.teamId).join(", ");
-      throw new EspnNotFoundError(`Team ${teamId} not found in league ${leagueId} (teams: ${ids})`);
-    }
+    const w = await this.resolveWeek(leagueId, year, week);
+    const raw = await this.leagueGet<RawLeague>(leagueId, year, {
+      views: ["mRoster"],
+      scoringPeriodId: w,
+      forTeamId: teamId,
+    });
+    const roster = parseRosters(raw, year, w).find((r) => r.teamId === teamId);
+    if (!roster) throw new EspnNotFoundError(`Team ${teamId} not found in league ${leagueId}`);
     return roster;
   }
 
@@ -179,6 +193,63 @@ export class EspnClient {
       },
     });
     return parseFreeAgents(raw, year, w);
+  }
+
+  /**
+   * Players whose first or last name starts with `name`, any status (rostered,
+   * free agent or on waivers), most rostered first. ESPN matches names exactly
+   * as typed, punctuation included, so with no hits this retries each word and
+   * keeps loose matches ("AJ Brown" finds "A.J. Brown"). When some names match
+   * `name` exactly (ignoring punctuation and suffixes like Jr.), only those are
+   * returned.
+   */
+  async searchPlayers(
+    leagueId: number,
+    year: number,
+    name: string,
+    week?: number,
+  ): Promise<EspnPoolPlayer[]> {
+    const query = name.trim().replace(/\s+/g, " ");
+    if (!nameWords(query).length) return [];
+    const w = await this.resolveWeek(leagueId, year, week);
+    let found = await this.playersByName(leagueId, year, query, w);
+    if (!found.length) {
+      // Longest words first: they're the most specific. Three at most.
+      const words = [...new Set(nameWords(query))].sort((a, b) => b.length - a.length).slice(0, 3);
+      const lists = await Promise.all(
+        words.map((word) => this.playersByName(leagueId, year, word, w)),
+      );
+      const seen = new Set<number>();
+      found = lists
+        .flat()
+        .filter((p) => !seen.has(p.player.id) && seen.add(p.player.id))
+        .filter((p) => nameMatches(p.player.name, query))
+        .sort((a, b) => (b.player.percentOwned ?? 0) - (a.player.percentOwned ?? 0));
+    }
+    const key = nameKey(query);
+    const exact = found.filter((p) => nameKey(p.player.name) === key);
+    return exact.length ? exact : found;
+  }
+
+  private async playersByName(
+    leagueId: number,
+    year: number,
+    name: string,
+    week: number,
+  ): Promise<EspnPoolPlayer[]> {
+    const raw = await this.leagueGet<RawLeague>(leagueId, year, {
+      views: ["kona_player_info"],
+      scoringPeriodId: week,
+      filter: {
+        players: {
+          filterName: { value: name },
+          // ESPN rejects a limit without a sort.
+          limit: SEARCH_LIMIT,
+          sortPercOwned: { sortPriority: 1, sortAsc: false },
+        },
+      },
+    });
+    return parsePlayerPool(raw, year, week);
   }
 
   /** Recent adds, drops, waiver claims (with FAAB bids) and trades, newest first. */
@@ -332,6 +403,7 @@ export class EspnClient {
     if (opts.scoringPeriodId !== undefined) {
       url.searchParams.set("scoringPeriodId", String(opts.scoringPeriodId));
     }
+    if (opts.forTeamId !== undefined) url.searchParams.set("forTeamId", String(opts.forTeamId));
     return url.toString();
   }
 

@@ -14,6 +14,7 @@ confirms the current season's shapes.
 | `pro_schedule.json` | `pro_schedule_2024.json`, week 1 games only | `proTeamSchedules_wl` |
 | `pending_transactions.json` | Recorded live on 2026-10-13 (two queued waiver claims); see below | `mPendingTransactions` |
 | `transactions.json` | Hand-written in the shape recorded live on 2026-10-28 (a FAAB waiver run); see below | `mTransactions2`, week 8 |
+| `player_search.json` | Hand-written in the shape seen live on 2026-10-29; see below | `kona_player_info` with `filterName`, week 1 of 2018 |
 
 Per-player stats were cut to the scoring periods the tests read, and stat
 breakdowns were dropped.
@@ -30,3 +31,11 @@ log. It holds the latest run (team 2 wins one claim, loses one to team 5's $40
 bid, and has one fail for another reason), the resolved proposals, a
 cancellation (which records $0; its proposal has the bid), a claim queued after the run, and a run from the day before.
 Player 3045147 matches `player_card.json`; the rest are placeholder ids.
+
+`player_search.json` is made up, in the live shape of a name search: players of
+every status, each with `onTeamId` (0 for none) and, on waivers,
+`waiverProcessDate`. Antonio Brown (13934) is on team 1, as in `league.json`,
+so his slot can be looked up; one "Pat Sample" is on team 2 but not on its
+fixture roster. The rest are placeholder players. `fixtureFetch` filters it the
+way ESPN's `filterName` behaves: case-insensitive, matching the start of the
+full name or of the last name, punctuation as typed.

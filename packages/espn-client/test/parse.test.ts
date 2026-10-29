@@ -5,6 +5,7 @@ import {
   parseLeagueSettings,
   parseMatchups,
   parsePendingClaims,
+  parsePlayerPool,
   parseProTeams,
   parseRosters,
   parseTransactions,
@@ -178,6 +179,37 @@ describe("parseFreeAgents", () => {
     const dated = players.filter((p) => p.player.lastNewsDate !== null);
     expect(dated.length).toBeGreaterThan(0);
     for (const p of dated) expect(p.player.lastNewsDate).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+  });
+});
+
+describe("parsePlayerPool", () => {
+  it("reads each player's team, or null when he's on none", () => {
+    const pool = parsePlayerPool(fixture<RawLeague>("player_search.json"), 2018, 1);
+    expect(pool[0]).toMatchObject({
+      status: "ONTEAM",
+      onTeamId: 1,
+      positionalRank: 3,
+      player: { name: "Antonio Brown", position: "WR", week: { projected: 18.5, actual: 22.4 } },
+    });
+    expect(pool.find((p) => p.status === "WAIVERS")).toMatchObject({
+      onTeamId: null,
+      waiverProcessDate: "2018-09-11T08:00:00.000Z",
+    });
+  });
+
+  it("infers the status from the team when ESPN leaves it out", () => {
+    const [onTeam, free] = parsePlayerPool(
+      {
+        players: [
+          { onTeamId: 4, player: { id: 1 } },
+          { onTeamId: 0, player: { id: 2 } },
+        ],
+      },
+      2026,
+      8,
+    );
+    expect(onTeam).toMatchObject({ status: "ONTEAM", onTeamId: 4 });
+    expect(free).toMatchObject({ status: "FREEAGENT", onTeamId: null });
   });
 });
 

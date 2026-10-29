@@ -32,6 +32,7 @@ import type {
   EspnMatchup,
   EspnMatchupSide,
   EspnPendingClaim,
+  EspnPoolPlayer,
   EspnTransaction,
   EspnPlayer,
   EspnProGame,
@@ -297,6 +298,20 @@ export function parseFreeAgents(raw: RawLeague, year: number, week: number): Esp
     waiverProcessDate: p.waiverProcessDate ? new Date(p.waiverProcessDate).toISOString() : null,
     player: parsePlayer(p.player ?? {}, year, week),
   }));
+}
+
+/** Players of any status (a name search), with the team each one is on. */
+export function parsePlayerPool(raw: RawLeague, year: number, week: number): EspnPoolPlayer[] {
+  const free = parseFreeAgents(raw, year, week);
+  return (raw.players ?? []).map((p, i) => {
+    // ESPN uses 0 for "no team".
+    const onTeamId = p.onTeamId ? p.onTeamId : null;
+    return {
+      ...free[i]!,
+      status: p.status ?? (onTeamId === null ? "FREEAGENT" : "ONTEAM"),
+      onTeamId,
+    };
+  });
 }
 
 /**
