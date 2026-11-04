@@ -11,6 +11,7 @@ export {
 export { applyRules } from "./rules.js";
 export { DEFAULT_IR_ELIGIBLE, optimizeLineup, type OptimizeOptions } from "./lineup.js";
 export { byeCoverage } from "./byes.js";
+export { findTradePartners, type PartnerInput } from "./partners.js";
 export { FantasyService, type FantasyServiceOptions } from "./service.js";
 export {
   EspnAuthError,

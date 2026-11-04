@@ -22,6 +22,8 @@ import {
   Scoreboard,
   StoredRule,
   Team,
+  TradePartners,
+  TradePosition,
   Transaction,
   type FantasyService,
 } from "@nscaamano/espn-fantasy-core";
@@ -212,6 +214,37 @@ export function createServer(
       annotations: READ,
     },
     async (args) => result(await service().getTeamRoster(args.league, args.teamId, args.week)),
+  );
+
+  server.registerTool(
+    "find_trade_partners",
+    {
+      title: "Find trade partners",
+      description:
+        "Shortlists trade partners in one league for a position the user needs: teams with depth at `need` that could use what the user can give up at `offer`, with the specific players on both sides. It reads every team's roster and works out each team's best starting lineup by ESPN's season projection (`seasonProjectedPoints`) over the league's starting slots, FLEX and superflex (OP) included. All gains and costs are in those points. They rank players well, but ESPN doesn't say which weeks the projection covers (no rest-of-season split), byes and injuries are inside it, and it can trail a role change, so don't read them as exact points. A partner's `theirSurplus` players are at the need position and spare for them: he'd add at least a point to the user's best lineup (`gainForMe`), and no less than theirs loses without him (`costToThem`; 0 for a bench player), which is under a quarter of his projection, so they have depth behind him. `forThem` lists the user's players that are spare by the same test the other way (details and `costToMe` in `mine.spare`). `theirShortage` ranks the team at each offer position by its Nth-best player there (N = how many the league's typical lineup starts, e.g. 2 QBs in superflex; rank 1 = strongest, `short` = bottom third, `out` = players who can't play now). `bestSwap` is the one-for-one swap that improves both best lineups the most, judged jointly (one player in can change who fills FLEX or OP), and `fit` is its smaller gain (0 when no swap helps both). `reach` is the smaller of the best gain each side could get from the other's spare players: room for a bigger or uneven deal. Partners are sorted by `fit`, then `reach`. Players who are OUT, IR or SUSPENDED, or in an IR slot, count for no one (they're listed under `out` or in `mine.needPlayers`); questionable and doubtful players count, so check `injuryStatus`. `noSurplus` names teams with nothing to spare at the need. If `offer` is omitted, it's inferred from the user's spare depth (`offerInferred`; every other position when the user has none). An empty `mine.spare` means nothing at the offer positions can go without hurting the user's lineup, so a deal means giving up a starter. This finds candidates only: before proposing a trade, value both sides rest of season under the league's scoring, check byes, news and the best free agent at the need, and confirm the shortlisted rosters with get_team_roster.",
+      inputSchema: z.object({
+        league,
+        need: TradePosition.describe("The position the user wants to get."),
+        offer: z
+          .array(TradePosition)
+          .min(1)
+          .optional()
+          .describe(
+            "Positions the user would give up. Omit to infer them from the user's spare depth (QB, RB, WR, TE).",
+          ),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(10)
+          .default(5)
+          .describe("Most partners to return (1–10, default 5)."),
+      }),
+      outputSchema: TradePartners,
+      annotations: READ,
+    },
+    async (args) =>
+      result(await service().findTradePartners(args.league, args.need, args.offer, args.limit)),
   );
 
   server.registerTool(

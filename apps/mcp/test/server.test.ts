@@ -43,6 +43,7 @@ describe("MCP server", () => {
     const { client } = await connect();
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
+      "find_trade_partners",
       "get_bye_coverage",
       "get_faab_prices",
       "get_free_agents",
@@ -139,6 +140,25 @@ describe("MCP server", () => {
     const roster = await call("get_team_roster", { league: "test", teamId: other.id, week: 1 });
     expect(roster.isError).toBeFalsy();
     expect(roster.structuredContent).toMatchObject({ teamId: other.id, asOf: expect.any(String) });
+  });
+
+  it("finds trade partners, inferring the offer, and rejects an unknown position", async () => {
+    const { call } = await connect();
+    const res = await call("find_trade_partners", { league: "test", need: "WR" });
+    expect(res.isError).toBeFalsy();
+    const out = res.structuredContent as {
+      need: string;
+      offerInferred: boolean;
+      offer: string[];
+      partners: { theirSurplus: { position: string }[] }[];
+    };
+    expect(out).toMatchObject({ need: "WR", offerInferred: true });
+    expect(out.offer).not.toContain("WR");
+    expect(out.partners.length).toBeLessThanOrEqual(5);
+    for (const p of out.partners) expect(p.theirSurplus[0]?.position).toBe("WR");
+    expect(JSON.parse(res.text!)).toEqual(res.structuredContent);
+    const bad = await call("find_trade_partners", { league: "test", need: "FLEX" });
+    expect(bad.isError).toBe(true);
   });
 
   it("accepts a season sort for free agents and rejects an unknown one", async () => {

@@ -576,6 +576,25 @@ describe("FantasyService across leagues and teams", () => {
     const all = [...roster.starters, ...roster.bench];
     expect(all.some((s) => s.player.lastNewsDate !== null)).toBe(true);
   });
+
+  it("finds trade partners from one roster request per team, for the current week", async () => {
+    const { svc, calls } = service(1);
+    const out = await svc.findTradePartners("test", "RB", ["WR"], 10);
+    const rosterReqs = calls.filter((c) => c.url.searchParams.getAll("view").includes("mRoster"));
+    const settings = await svc.getLeagueSettings("test");
+    expect(rosterReqs.map((c) => c.url.searchParams.get("forTeamId")).sort()).toEqual(
+      settings.teams.map((t) => String(t.id)).sort(),
+    );
+    expect(
+      rosterReqs.every(
+        (c) => c.url.searchParams.get("scoringPeriodId") === String(settings.currentWeek),
+      ),
+    ).toBe(true);
+    expect(out).toMatchObject({ league: "test", need: "RB", offer: ["WR"], teams: 10 });
+    expect(out.partners.length + out.noSurplus.length).toBe(9);
+    for (const p of out.partners)
+      expect(p.theirSurplus.every((s) => s.position === "RB")).toBe(true);
+  });
 });
 
 describe("loadConfig", () => {

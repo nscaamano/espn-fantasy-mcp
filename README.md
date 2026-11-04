@@ -61,6 +61,7 @@ If the team id is wrong, the error message lists every team in the league with i
 | `get_scoreboard` | your matchup in every league in one call; a league that can't be read is listed separately |
 | `get_teams` | every team in a league: record, points, seed, waiver rank, FAAB left |
 | `get_team_roster` | any team's roster, same shape as `get_my_roster` |
+| `find_trade_partners` | teams with spare depth at a position you need that could use what you can spare, with the players on both sides, each team's rank at the positions you'd offer, and the one-for-one swap that helps both lineups most (by season projection) |
 | `get_free_agents` | best available at a position by this week's or the season's projection, free agent vs waivers |
 | `get_player` | any player by name (partial names work): who has him and in which slot, or free agent or on waivers (and when he clears), with status, projections and his latest news |
 | `get_player_news` | recent news blurbs for players by name (injuries, practice reports, inactives, role changes), newest first |

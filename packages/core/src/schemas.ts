@@ -625,3 +625,110 @@ export const FaabPrices = z.object({
   asOf: z.string(),
 });
 export type FaabPrices = z.infer<typeof FaabPrices>;
+
+/** Positions a trade can be built around. */
+export const TradePosition = z.enum(["QB", "RB", "WR", "TE", "K", "D/ST"]);
+export type TradePosition = z.infer<typeof TradePosition>;
+
+/** A player in a trade-partner search, valued by ESPN's season projection. */
+export const TradePlayer = Player.pick({
+  name: true,
+  position: true,
+  proTeam: true,
+  injuryStatus: true,
+  byeWeek: true,
+  seasonProjectedPoints: true,
+});
+export type TradePlayer = z.infer<typeof TradePlayer>;
+
+/** A team's strength at a position: its Nth-best player there, ranked against the league. */
+export const PositionRank = z.object({
+  position: z.string(),
+  /**
+   * The team's Nth-best player at the position who can play, where N is how
+   * many players there the league's typical best lineup starts (2 QBs in
+   * superflex). Null when the team has fewer than N.
+   */
+  weakestStarter: z.string().nullable(),
+  /** His season projection; 0 when there's no such player. */
+  seasonProjectedPoints: z.number(),
+  /** 1 = strongest in the league. */
+  rank: z.number().int(),
+  /** In the league's bottom third at this position. */
+  short: z.boolean(),
+  /** Players at the position who can't play now (OUT, IR, SUSPENDED or in an IR slot). */
+  out: z.array(z.string()).optional(),
+});
+export type PositionRank = z.infer<typeof PositionRank>;
+
+/**
+ * Candidate trade partners for one need, from every roster's best lineup by
+ * full-season projection. Mechanical: fairness and the proposal are the
+ * caller's job.
+ */
+export const TradePartners = z.object({
+  league: z.string(),
+  week: z.number().int(),
+  need: TradePosition,
+  /** Positions the user would give up. */
+  offer: z.array(TradePosition),
+  /** True when `offer` wasn't given and came from the user's spare depth. */
+  offerInferred: z.boolean(),
+  /** Teams in the league, for reading `rank`. */
+  teams: z.number().int(),
+  mine: z.object({
+    /** The user's strength at the need position. */
+    atNeed: PositionRank,
+    /** The user's players at the need position; `starting` = in the user's best lineup. */
+    needPlayers: z.array(TradePlayer.extend({ starting: z.boolean() })),
+    /**
+     * The user's spare players at the offer positions, by the same test as a
+     * partner's `theirSurplus` the other way: he'd add at least a point to some
+     * other team's best lineup, and no less than the user's loses without him
+     * (`costToMe`; 0 for a bench player), which is under a quarter of his projection.
+     */
+    spare: z.array(TradePlayer.extend({ costToMe: z.number() })),
+  }),
+  /** Teams with spare players at the need: by `fit`, then `reach`. */
+  partners: z.array(
+    z.object({
+      teamId: z.number().int(),
+      team: z.string(),
+      /** Wins-losses(-ties). */
+      record: z.string(),
+      playoffSeed: z.number().int().nullable(),
+      /**
+       * The smaller of the two lineup gains in `bestSwap`, in season points: what
+       * both sides gain at least. 0 when no one-for-one swap helps both.
+       */
+      fit: z.number(),
+      /**
+       * The smaller of the best gain each side could get from the other's spare
+       * players, one at a time: room for a bigger or uneven deal when `fit` is 0.
+       */
+      reach: z.number(),
+      /** The one-for-one swap that helps both best lineups the most; null if none does. */
+      bestSwap: z
+        .object({ get: z.string(), give: z.string(), myGain: z.number(), theirGain: z.number() })
+        .nullable(),
+      /**
+       * Their spare players at the need position: he'd add at least a point to
+       * the user's best lineup (`gainForMe`), and no less than theirs loses
+       * without him (`costToThem`; 0 for a bench player), which is under a
+       * quarter of his projection, so they have depth behind him. Best net
+       * value first.
+       */
+      theirSurplus: z.array(TradePlayer.extend({ gainForMe: z.number(), costToThem: z.number() })),
+      /** Their strength at each offer position. */
+      theirShortage: z.array(PositionRank),
+      /** The user's spare players that would help this team (details in `mine.spare`). */
+      forThem: z.array(
+        z.object({ name: z.string(), position: z.string(), gainForThem: z.number() }),
+      ),
+    }),
+  ),
+  /** Teams with no spare player at the need position. */
+  noSurplus: z.array(z.string()),
+  asOf: z.string(),
+});
+export type TradePartners = z.infer<typeof TradePartners>;

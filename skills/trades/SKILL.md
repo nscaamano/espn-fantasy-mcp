@@ -18,14 +18,17 @@ Trades are per league. Use the league the user named. Otherwise, go through each
 
    If `missingRules` or `conflicts` is non-empty (including the trade deadline), ask the user first, and save the answer with `set_league_rule`. Never carry one league's rules over to another. **If the deadline has passed, stop** and say so.
 2. **`get_teams`**: every team's record, points for and against, and playoff seed. `isMine` marks the user.
-3. **`get_my_roster`**, then **`get_team_roster`** for every other team, for the current week.
+3. **`find_trade_partners`** with the position of need, plus `offer` if the user named what they'd give (otherwise it's inferred from the user's spare depth). One call reads every roster and returns the shortlist: each partner's spare players at the need (`theirSurplus`), the user's spare players that would help them (`forThem`, details in `mine.spare`), their rank at the offer positions (`theirShortage`), and the one-for-one `bestSwap` that helps both lineups most (`fit`). In opportunity mode, call it for the position where the user ranks lowest (`mine.atNeed.rank`), or for each position they'd like to upgrade.
    **`get_bye_coverage`** for the user: each week ahead where the roster can't fill a starting slot (`openSlots`) or has fewer players at a position than its full-strength lineup starts (`short`, e.g. one QB available and two needed in superflex). Those weeks are holes a trade can fix.
-4. **`get_recent_activity`** (limit about 50): who is active, who traded recently (TRADE_SENT, TRADE_RECEIVED) and for what, and who just added depth at a position. A manager with no moves in weeks may never answer an offer.
-5. **`get_pending_claims`**: don't trade away a player a queued claim drops, or count on a claim that hasn't won.
-6. **`get_free_agents`** at the position of need. That's the bar: a trade has to beat the best free agent clearly, or the answer is a claim, not a trade.
-7. **`get_player`** for a player the user names ("what would it take to get X"): who has him, his slot there, his injury and projections.
+4. **`get_my_roster`**, then **`get_team_roster`** for the top two or three partners only, to confirm their depth, byes and slots. Read the whole league's rosters only when the tool finds no partners and you want to look for an uneven deal.
+5. **`get_recent_activity`** (limit about 50): who is active, who traded recently (TRADE_SENT, TRADE_RECEIVED) and for what, and who just added depth at a position. A manager with no moves in weeks may never answer an offer.
+6. **`get_pending_claims`**: don't trade away a player a queued claim drops, or count on a claim that hasn't won.
+7. **`get_free_agents`** at the position of need. That's the bar: a trade has to beat the best free agent clearly, or the answer is a claim, not a trade.
+8. **`get_player`** for a player the user names ("what would it take to get X"): who has him, his slot there, his injury and projections.
 
 ## 2. Map needs and surpluses, every team
+
+`find_trade_partners` has done the mechanical part by season projection: who starts in each team's best lineup (FLEX and OP included), whose depth is spare, and who is short where. Add what it can't see: how long an OUT or IR player is out (it leaves them out of every lineup and lists them as `out`), questionable tags on its candidates (`injuryStatus`), upcoming byes, and role changes the season projection hasn't caught up with.
 
 - **Need:** a starting slot filled by a weak, injured or bye-week player; a starter OUT for weeks (web-search how long: an IR or OUT tag doesn't say); the user's weeks with `openSlots` or `short` from `get_bye_coverage`, and other teams' byes stacked at one position (compare `byeWeek`); in superflex, fewer than two startable QBs, or no third for byes.
 - **Surplus:** startable players beyond what the league's slots and the upcoming byes need, especially a bench player who would start for another team. FLEX takes RB, WR or TE, and OP takes QB, RB, WR or TE, so count depth against those slots too.
@@ -45,7 +48,7 @@ Value is points over the rest of the season, not this week. ESPN's numbers are o
 
 ## 4. Build proposals
 
-**Fix mode** (the user has a hole): find teams with surplus at the user's need, then offer from the user's surplus at a position they're short at.
+**Fix mode** (the user has a hole): find teams with surplus at the user's need, then offer from the user's surplus at a position they're short at. Start from `find_trade_partners`' partners, best `fit` first. `bestSwap` is a starting point, not the proposal: it's one-for-one and by season projection only. A partner with `fit` 0 but a high `reach` may take an uneven deal (two for one, or a better player from the user plus a bench piece). An empty `mine.spare` means the user has no depth to deal from: say the price is a starter, and weigh whether the hole is worth it.
 
 **Opportunity mode** (the user is in good shape): scan for struggling teams (starters injured, a brutal bye week, a losing streak, no depth at a position) and use the user's depth to upgrade.
 - **Consolidation:** two solid bench players for one of their better starters. It works for a team with holes.

@@ -32,6 +32,7 @@ import {
 import { byeCoverage } from "./byes.js";
 import { faabPrices, winningClaims, type WeekLog } from "./faab.js";
 import { DEFAULT_IR_ELIGIBLE, optimizeLineup } from "./lineup.js";
+import { findTradePartners } from "./partners.js";
 import { applyRules } from "./rules.js";
 import {
   ByeCoverage,
@@ -48,9 +49,11 @@ import {
   RuleKey,
   OptimalLineup,
   Scoreboard,
+  TradePartners,
   Transaction,
   WaiverResults,
   type FreeAgentSort,
+  type TradePosition,
   type Team,
   ruleValueSchema,
   type MatchupSide,
@@ -273,6 +276,35 @@ export class FantasyService {
       throw new Error("ESPN's NFL bye weeks didn't load; try again");
     }
     return ByeCoverage.parse(byeCoverage(roster, settings.roster.slots, from, to));
+  }
+
+  /**
+   * Teams with depth at `need` that could use what the user can spare at
+   * `offer` (inferred when omitted), from every roster's best lineup by
+   * full-season projection. One roster request per team, in parallel.
+   */
+  async findTradePartners(
+    league: string,
+    need: TradePosition,
+    offer?: TradePosition[],
+    limit?: number,
+  ): Promise<TradePartners> {
+    const cfg = findLeague(this.config, league);
+    const settings = await this.getLeagueSettings(cfg.alias);
+    const rosters = await Promise.all(
+      settings.teams.map((t) => this.getTeamRoster(cfg.alias, t.id, settings.currentWeek)),
+    );
+    return TradePartners.parse(
+      findTradePartners({
+        rosters,
+        teams: settings.teams,
+        myTeamId: cfg.myTeamId,
+        slots: settings.roster.slots,
+        need,
+        offer,
+        limit,
+      }),
+    );
   }
 
   /** Every team in a league: record, points, playoff seed, waiver rank and FAAB left. */
