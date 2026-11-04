@@ -19,6 +19,7 @@ Trades are per league. Use the league the user named. Otherwise, go through each
    If `missingRules` or `conflicts` is non-empty (including the trade deadline), ask the user first, and save the answer with `set_league_rule`. Never carry one league's rules over to another. **If the deadline has passed, stop** and say so.
 2. **`get_teams`**: every team's record, points for and against, and playoff seed. `isMine` marks the user.
 3. **`get_my_roster`**, then **`get_team_roster`** for every other team, for the current week.
+   **`get_bye_coverage`** for the user: each week ahead where the roster can't fill a starting slot (`openSlots`) or has fewer players at a position than its full-strength lineup starts (`short`, e.g. one QB available and two needed in superflex). Those weeks are holes a trade can fix.
 4. **`get_recent_activity`** (limit about 50): who is active, who traded recently (TRADE_SENT, TRADE_RECEIVED) and for what, and who just added depth at a position. A manager with no moves in weeks may never answer an offer.
 5. **`get_pending_claims`**: don't trade away a player a queued claim drops, or count on a claim that hasn't won.
 6. **`get_free_agents`** at the position of need. That's the bar: a trade has to beat the best free agent clearly, or the answer is a claim, not a trade.
@@ -26,7 +27,7 @@ Trades are per league. Use the league the user named. Otherwise, go through each
 
 ## 2. Map needs and surpluses, every team
 
-- **Need:** a starting slot filled by a weak, injured or bye-week player; a starter OUT for weeks (web-search how long: an IR or OUT tag doesn't say); upcoming byes stacked at one position (compare `byeWeek`); in superflex, fewer than two startable QBs, or no third for byes.
+- **Need:** a starting slot filled by a weak, injured or bye-week player; a starter OUT for weeks (web-search how long: an IR or OUT tag doesn't say); the user's weeks with `openSlots` or `short` from `get_bye_coverage`, and other teams' byes stacked at one position (compare `byeWeek`); in superflex, fewer than two startable QBs, or no third for byes.
 - **Surplus:** startable players beyond what the league's slots and the upcoming byes need, especially a bench player who would start for another team. FLEX takes RB, WR or TE, and OP takes QB, RB, WR or TE, so count depth against those slots too.
 - **Context** from `get_teams`: contenders (a good record or a playoff seed) want points now. Teams falling out of the race (a losing record, well out of the last playoff seed) are more open to selling veterans or taking a gamble. A team with several starters out needs points this week.
 
@@ -60,6 +61,7 @@ Prefer active managers with a reason to deal. Mind whom a trade strengthens: thi
 - **Both sides should gain:** each team's best starting lineup should project more points per week over the rest of the season, or at least fill a real need. Work it out from each roster and the league's slots.
 - **Value in, value out:** what the user gives and gets, in rest-of-season points over replacement, should be roughly even, within about 15%. The leverage is the other manager's need, not a lopsided deal: those get rejected, vetoed (if `vetoVotesRequired` is set) and sour future offers.
 - **If the user gives up more value,** say so, and propose it only when filling the hole is worth it.
+- **Byes after the trade:** the user's weeks from `get_bye_coverage` shouldn't get worse. The incoming player's `byeWeek` shouldn't land in a week already short at his position, and nobody the user gives up should be the one covering a `short` week. Say which flagged weeks the trade fixes.
 - **Don't build a deal on news the other manager may not have seen,** such as an injury that broke an hour ago. It's likely to be vetoed and remembered.
 - Cut any proposal that fails the check. If none survives, say so and fall back to the best free agent.
 

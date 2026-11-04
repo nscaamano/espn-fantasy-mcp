@@ -5,6 +5,7 @@
 
 import { readFileSync } from "node:fs";
 import {
+  ByeCoverage,
   FaabPrices,
   FreeAgent,
   FreeAgentSort,
@@ -127,6 +128,35 @@ export function createServer(
       annotations: READ,
     },
     async (args) => result(await service().getOptimalLineup(args.league, args.week)),
+  );
+
+  server.registerTool(
+    "get_bye_coverage",
+    {
+      title: "Bye-week holes ahead",
+      description:
+        "For each upcoming week in one league, whether the user's roster can field a full lineup through bye weeks and current injuries: the planning view for trades and waiver claims (a QB bye in a superflex league, a kicker or D/ST bye with no backup). Uses the roster as it is now (starters and bench; players in IR slots don't count) and the league's starting slots, by slot eligibility only, so FLEX, OP (superflex) and other combo slots count; no weekly projections. A player is available in a week unless his NFL team is on bye then, he's OUT, IR or SUSPENDED now, or ESPN projects him for 0 points this season (it zeroes players it expects to sit, such as a benched backup; listed in `zeroProjection`). Injury status is only known for now, so injured players aren't counted in any week, and the figures that would change if they were back come as `ifHealthy` and `openSlotsIfHealthy`: judge from the news whether he'll be back by then. Returns `fullStrength` (how many players of each position the best lineup by season projection starts with everyone healthy and nobody on bye; in superflex usually 2 QBs), `injured`, `zeroProjection`, and per week `byes` (players on bye), `openSlots` (starting slots nobody available is eligible for: a sure zero unless the user adds someone), and `short` (positions with fewer available players than fullStrength starts, with `available` and `needed`: a flex slot falls back to another position, or a slot goes empty if `openSlots` says so). `openSlots` and `short` are omitted in weeks with no problem. Defaults to the current week and the five after it, capped at the league's last scoring week.",
+      inputSchema: z.object({
+        league,
+        fromWeek: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("First NFL week to check. Defaults to the league's current week."),
+        toWeek: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe(
+            "Last NFL week to check. Defaults to five weeks after fromWeek; capped at the league's last scoring week.",
+          ),
+      }),
+      outputSchema: ByeCoverage,
+      annotations: READ,
+    },
+    async (args) => result(await service().getByeCoverage(args.league, args.fromWeek, args.toWeek)),
   );
 
   server.registerTool(

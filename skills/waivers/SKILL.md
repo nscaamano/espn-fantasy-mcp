@@ -31,7 +31,8 @@ Use the league the user named, or every league from `list_leagues`. For each one
   - Starters on a bye with no startable bench replacement.
   - Starters who are OUT, IR, DOUBTFUL, or QUESTIONABLE with a 0.0 projection.
   - Web-search how long each injury is expected to last. An IR or OUT tag doesn't say whether it's one week or the season, so never guess the length from the tag.
-- **Depth:** enough startable players to cover every starting slot plus the byes in the next two to three weeks (compare `byeWeek` across the roster). In superflex, keep three startable QBs if possible, because a QB bye or injury is otherwise a zero.
+- **Depth:** enough startable players to cover every starting slot plus the byes in the weeks ahead. Call **`get_bye_coverage`**: a week with `openSlots` is a sure zero at that slot unless the user adds someone (often a K or D/ST bye with no backup), and a `short` entry (e.g. QB: one available, two needed in superflex) means a flex slot falls back to a weaker player. `ifHealthy` shows what changes if an injured player is back by then. In superflex, keep three startable QBs if possible, because a QB bye or injury is otherwise a zero.
+- **Judge each claim against those weeks:** say which flagged weeks it fixes. A target on bye in the week he's meant to cover doesn't help, and the drop mustn't be the player covering another flagged week. A hole three or more weeks out can wait for a later, cheaper claim unless the position is scarce.
 - **Dead bench spots:**
   - Long-term injured players who belong on IR (if a slot is open and ESPN allows it).
   - Players with no role on their NFL team, confirmed by news or usage, not just a tiny projection or a low % rostered.
@@ -83,7 +84,7 @@ ESPN's projections and % rostered are inputs from one model and from the crowd. 
   - **Role and upside first:** a backup RB who'd start if the player ahead of him got hurt is worth more than his projection, especially while one of the user's own starters is questionable.
   - **% rostered measures popularity, not value to this roster.** Don't name a drop because of a low % rostered or a small projection alone.
   - **When streaming a K or D/ST, drop the one being replaced.** Don't keep two on the bench unless a bye makes it necessary, and even then, compare the backup with a skill player who has upside.
-  - Keep anyone needed for an upcoming bye.
+  - Keep anyone needed for an upcoming bye: dropping him shouldn't create a `short` or `openSlots` week in `get_bye_coverage`.
 - **Claims can't land on IR,** and a claim mustn't push a position past `positionLimits`.
 - **Alternative claims share a drop:** "RB A, else RB B", both dropping C. Once one wins, the other fails, which is what you want.
 - **Claims the user wants both of need different drops.**

@@ -435,6 +435,56 @@ export const OptimalLineup = z.object({
 });
 export type OptimalLineup = z.infer<typeof OptimalLineup>;
 
+/**
+ * Which upcoming weeks the user's roster can't cover: starting slots nobody
+ * available can fill, and positions with fewer available players than the
+ * full-strength lineup starts. Eligibility only, no weekly projections.
+ */
+export const ByeCoverage = z.object({
+  league: z.string(),
+  fromWeek: z.number().int(),
+  toWeek: z.number().int(),
+  /**
+   * Players of each position the full-strength lineup starts (the best lineup
+   * by season projection with nobody on bye or hurt), e.g. { QB: 2, RB: 2, WR: 3,
+   * TE: 1, K: 1, "D/ST": 1 } in superflex. `short` is measured against it.
+   */
+  fullStrength: z.record(z.string(), z.number().int()),
+  /** Starters and bench players OUT, IR or SUSPENDED now; not counted as available in any week. */
+  injured: z.array(Player.pick({ name: true, position: true, injuryStatus: true })),
+  /**
+   * Starters and bench players ESPN projects for 0 points this season (it zeroes
+   * players it expects to sit: benched, out for the year); never counted as available.
+   */
+  zeroProjection: z.array(z.string()),
+  weeks: z.array(
+    z.object({
+      week: z.number().int(),
+      /** Starters and bench players whose NFL team is on bye that week. */
+      byes: z.array(z.string()),
+      /** Starting slots no available player is eligible for. Omitted when none. */
+      openSlots: z.array(z.string()).optional(),
+      /** The open slots if every injured player were back; only when that's fewer. */
+      openSlotsIfHealthy: z.array(z.string()).optional(),
+      /** Positions with fewer available players than fullStrength starts. Omitted when none. */
+      short: z
+        .array(
+          z.object({
+            position: z.string(),
+            available: z.number().int(),
+            needed: z.number().int(),
+            /** Available if every injured player were back; only when that's more. */
+            ifHealthy: z.number().int().optional(),
+          }),
+        )
+        .optional(),
+    }),
+  ),
+  /** When the roster was read from ESPN (ISO, UTC). */
+  asOf: z.string(),
+});
+export type ByeCoverage = z.infer<typeof ByeCoverage>;
+
 export const TransactionAction = z.enum([
   "ADD",
   "WAIVER_ADD",

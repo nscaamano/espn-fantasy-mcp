@@ -29,10 +29,12 @@ import {
   toWaiverResults,
   type ProSchedule,
 } from "./map.js";
+import { byeCoverage } from "./byes.js";
 import { faabPrices, winningClaims, type WeekLog } from "./faab.js";
 import { DEFAULT_IR_ELIGIBLE, optimizeLineup } from "./lineup.js";
 import { applyRules } from "./rules.js";
 import {
+  ByeCoverage,
   FaabPrices,
   FreeAgent,
   League,
@@ -62,6 +64,9 @@ export interface FantasyServiceOptions {
   settingsTtlMs?: number;
   now?: () => Date;
 }
+
+/** get_bye_coverage's default range: this many weeks from the current one. */
+const BYE_WEEKS_AHEAD = 6;
 
 /** News items cached per player: enough for get_player_news's largest `limit`. */
 const NEWS_DEPTH = 5;
@@ -237,6 +242,37 @@ export class FantasyService {
       }
     }
     return OptimalLineup.parse(lineup);
+  }
+
+  /**
+   * For each week from `fromWeek` (default: the current week) through `toWeek`
+   * (default: six weeks in all), capped at the league's last scoring week: the
+   * starting slots my roster can't fill and the positions it runs short at,
+   * from bye weeks and current injuries. Stored roster rules apply.
+   */
+  async getByeCoverage(league: string, fromWeek?: number, toWeek?: number): Promise<ByeCoverage> {
+    const cfg = findLeague(this.config, league);
+    const [settings, raw, roster] = await Promise.all([
+      this.getLeagueSettings(league),
+      this.espnSettings(cfg),
+      this.getMyRoster(league),
+    ]);
+    const lastWeek =
+      raw.finalScoringPeriod ??
+      Math.max(settings.currentWeek, ...Object.values(raw.schedule.matchupPeriods).flat());
+    const from = fromWeek ?? settings.currentWeek;
+    const to = Math.min(toWeek ?? from + BYE_WEEKS_AHEAD - 1, lastWeek);
+    if (from > lastWeek) {
+      throw new Error(
+        `${cfg.alias}'s last scoring week is ${lastWeek}; fromWeek ${from} is after it`,
+      );
+    }
+    if (from > to) throw new Error(`fromWeek ${from} is after toWeek ${to}`);
+    const players = [...roster.starters, ...roster.bench];
+    if (players.length && players.every((s) => s.player.byeWeek === null)) {
+      throw new Error("ESPN's NFL bye weeks didn't load; try again");
+    }
+    return ByeCoverage.parse(byeCoverage(roster, settings.roster.slots, from, to));
   }
 
   /** Every team in a league: record, points, playoff seed, waiver rank and FAAB left. */

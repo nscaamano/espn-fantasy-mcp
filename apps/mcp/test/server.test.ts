@@ -43,6 +43,7 @@ describe("MCP server", () => {
     const { client } = await connect();
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
+      "get_bye_coverage",
       "get_faab_prices",
       "get_free_agents",
       "get_league_settings",
@@ -108,6 +109,26 @@ describe("MCP server", () => {
     // The fixture league starts QB, 2 RB, 2 WR, TE, FLEX, D/ST and K.
     expect(out.starters).toHaveLength(9);
     expect(out.projectedTotal).toBeGreaterThanOrEqual(out.currentProjectedTotal - 0.01);
+  });
+
+  it("returns bye coverage for a range of weeks, and rejects a reversed one", async () => {
+    const { call } = await connect();
+    const res = await call("get_bye_coverage", { league: "test", fromWeek: 5, toWeek: 7 });
+    expect(res.isError).toBeFalsy();
+    const out = res.structuredContent as {
+      fromWeek: number;
+      toWeek: number;
+      fullStrength: Record<string, number>;
+      weeks: { week: number; byes: string[] }[];
+    };
+    expect(out).toMatchObject({ fromWeek: 5, toWeek: 7 });
+    expect(out.weeks.map((w) => w.week)).toEqual([5, 6, 7]);
+    expect(out.fullStrength.QB).toBe(1);
+    expect(JSON.parse(res.text!)).toEqual(res.structuredContent);
+
+    const bad = await call("get_bye_coverage", { league: "test", fromWeek: 9, toWeek: 6 });
+    expect(bad.isError).toBe(true);
+    expect(bad.text).toMatch(/fromWeek 9 is after toWeek 6/);
   });
 
   it("lists teams and returns another team's roster", async () => {

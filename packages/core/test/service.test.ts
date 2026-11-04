@@ -439,6 +439,47 @@ describe("FantasyService across leagues and teams", () => {
     expect(board.errors).toEqual([{ league: "two", error: expect.stringMatching(/No matchup/) }]);
   });
 
+  it("plans bye coverage from the roster's bye weeks, from the current week by default", async () => {
+    const { svc, calls } = service(1);
+    // The 2018 fixture's current week is its last (16), so the default range is that week alone.
+    const byDefault = await svc.getByeCoverage("test");
+    expect(byDefault).toMatchObject({ league: "test", fromWeek: 16, toWeek: 16 });
+    expect(byDefault.weeks.map((w) => w.week)).toEqual([16]);
+
+    const out = await svc.getByeCoverage("test", 5, 14);
+    expect(out.weeks.map((w) => w.week)).toEqual([5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+    const roster = await svc.getMyRoster("test");
+    const players = [...roster.starters, ...roster.bench].map((s) => s.player);
+    for (const w of out.weeks) {
+      expect(w.byes).toEqual(players.filter((p) => p.byeWeek === w.week).map((p) => p.name));
+    }
+    expect(Object.values(out.fullStrength).reduce((a, b) => a + b, 0)).toBe(9);
+    // A range past the league's last week is capped there; one starting after it is refused.
+    expect((await svc.getByeCoverage("test", 15, 20)).toWeek).toBe(16);
+    await expect(svc.getByeCoverage("test", 17)).rejects.toThrow(/last scoring week is 16/);
+    await expect(svc.getByeCoverage("test", 10, 9)).rejects.toThrow(/after toWeek/);
+    // Read-only: settings, roster and the NFL schedule.
+    expect(calls.every((c) => !c.url.pathname.includes("/news/"))).toBe(true);
+  });
+
+  it("applies stored starting slots to bye coverage", async () => {
+    const { fetch } = fixtureFetch();
+    const slots = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, "D/ST": 1, K: 3 };
+    const svc = new FantasyService(new EspnClient({ fetch }), {
+      leagues: [
+        {
+          alias: "test",
+          leagueId: 1234,
+          year: 2018,
+          myTeamId: 1,
+          rules: { "roster.slots": { value: slots, source: "user", confirmed: "2026-11-04" } },
+        },
+      ],
+    });
+    const out = await svc.getByeCoverage("test", 15, 16);
+    for (const w of out.weeks) expect(w.openSlots?.filter((s) => s === "K").length).toBe(2);
+  });
+
   it("suggests free agents for a slot the roster can't fill", async () => {
     const { fetch } = fixtureFetch();
     // A stored rule asking for more RBs than the roster has forces an empty slot.

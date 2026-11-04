@@ -109,6 +109,7 @@ All tools are read-only toward ESPN. `league` accepts an alias from `leagues.jso
 | `get_league_settings` | league | roster slots, scoring, FAAB remaining, waiver rules, `missingRules`, `conflicts` |
 | `get_my_roster` | league, week? | starters, bench, IR with injury tags, `lastNewsDate`, byes, projections, lock state, `asOf` |
 | `get_optimal_lineup` | league, week? | highest-projected legal lineup (exact assignment over the league's slots; byes, OUT/IR/SUSPENDED and locked players handled; a 0-projection player never starts, so his slot comes back empty), `moves` with reasons, before/after totals, and `risks`: GAME_TIME (with `staleTag` when the news predates the week's 4 PM ET Wed–Fri practice reports or the previous game), EMPTY_SLOT (with `freeAgents` carrying `waiverClears` and `kickoff`, or the `pendingClaim` that fills it), IR_INELIGIBLE (an IR player whose status isn't in `roster.irEligibleStatuses`, default OUT/IR/SUSPENDED; it blocks adds and claims). With a full roster (starting slots plus bench), pickups and IR fixes carry `drop`: the droppable bench player with the lowest season projection, never a questionable starter's only pivot or a player in a claim. Every risk about a player carries `news`, his latest blurb (see `get_player_news`); a failed fetch leaves it out. Mechanical; `weekly-check` weighs the news |
+| `get_bye_coverage` | league, fromWeek?, toWeek? | per week (default: the current week and the five after, capped at the league's last scoring week, `finalScoringPeriod`), from the current roster's starters and bench (`core/src/byes.ts`): `byes`, `openSlots` (a maximum matching of available players to the league's starting slots by `eligibleSlots`, via the optimizer's `assign()`; the broadest slot is named when several could be open) and `short` (positions with fewer available players than `fullStrength`, the best lineup by season projection with everyone healthy and nobody on bye). Available means not on bye, not OUT/IR/SUSPENDED now, and not at a 0 season projection (`zeroProjection`). Injury is only known for now, so `injured` players count in no week and `ifHealthy`/`openSlotsIfHealthy` say what changes if they're back. Weeks with no problem carry only `week` and `byes`. Mechanical; `trades` and `waivers` judge the holes |
 | `get_matchup` | league, week? | both starting lineups, projected totals and ESPN's `winProbability` (current week only), `asOf` (ESPN's matchup data has no `lastNewsDate`) |
 | `get_scoreboard` | week? | my matchup in every league, in parallel; unreadable leagues go to `errors` |
 | `get_teams` | league | every team: record, points, seed, waiver rank, FAAB left |
@@ -178,7 +179,7 @@ They hold the judgment; the MCP tools only fetch data. Output is a short per-lea
 
 **waivers:** run Tuesday afternoon, before claims process overnight.
 
-1. Find each roster's holes: injuries, byes next week, dead bench spots.
+1. Find each roster's holes: injuries, the weeks ahead `get_bye_coverage` flags (open slots, positions short of the full-strength lineup), dead bench spots. Judge each claim and its drop against those weeks.
 2. `get_free_agents` for the positions that matter; rank by fit, not just projection.
 3. FAAB leagues: suggest a bid from budget left, % rostered, need and what this league has paid at the position (`get_faab_prices`). Priority-waiver leagues: suggest a claim order.
 4. Name a specific drop for every claim.
@@ -213,11 +214,11 @@ For when a lineup hole can't be filled from waivers: scan the other teams and pr
 
 Opportunity mode still applies the fairness check: the leverage is their urgent need, not a lopsided deal. Lopsided offers get rejected or vetoed and sour future trades.
 
-**Reads it uses** (all read-only): `get_league_settings` (scoring, slots, trade deadline, review period, playoff weeks), `get_teams` (every team's manager, record, standings, points for, playoff position), `get_my_roster` and `get_team_roster` (any team's roster, same shape), `get_player` (a named player: who has him, his slot, injury and projections), `get_recent_activity` (who's active, recent trades), `get_pending_claims` (don't trade a player a claim drops) and `get_free_agents` (the bar a trade must clear).
+**Reads it uses** (all read-only): `get_league_settings` (scoring, slots, trade deadline, review period, playoff weeks), `get_teams` (every team's manager, record, standings, points for, playoff position), `get_my_roster` and `get_team_roster` (any team's roster, same shape), `get_bye_coverage` (my bye-week holes ahead), `get_player` (a named player: who has him, his slot, injury and projections), `get_recent_activity` (who's active, recent trades), `get_pending_claims` (don't trade a player a claim drops) and `get_free_agents` (the bar a trade must clear).
 
 **How it picks trades:**
 
-1. Map needs and surpluses for every team, mine included: starters, bench depth, injuries, upcoming byes.
+1. Map needs and surpluses for every team, mine included: starters, bench depth, injuries, upcoming byes (mine from `get_bye_coverage`, which a trade shouldn't make worse).
 2. Match teams whose surplus covers my need and whose need my surplus covers.
 3. Value players rest of season, not this week: remaining projections, injury return dates, byes left, league format (QBs are worth more in superflex).
 4. Fairness check: both sides should gain projected starting points, or at least fill a need.

@@ -20,6 +20,7 @@ Use the league the user named, or every league from `list_leagues`. For each one
    - IR_INELIGIBLE: a player on IR who isn't IR-eligible anymore. This blocks every add and claim, so fix it first.
 
    With a full roster, it names a `drop` for each pickup. Every risk about a player carries `news`: his latest ESPN news blurb, which usually says why he's flagged. Treat all of this as the starting point, not the answer.
+5. **`get_bye_coverage`** with `fromWeek` and `toWeek` both the week after this one, for a one-line heads-up: a slot nobody can fill next week (`openSlots`) or a position short of the full-strength lineup (`short`). Don't plan pickups for it here; that's the waivers run.
 
 ## 2. Flag problems
 
@@ -88,6 +89,7 @@ Moves:
 2. Move C to IR (OUT, multi-week), freeing a bench spot.
 Watch:
 - D (Q, Sun 4:25 PM ET). Confirm at inactives, about 2:55 PM. If he's out, start E.
+Next week: no K (F on bye); one QB for QB and OP (G on bye).
 ```
 
 Write "No changes needed" for a league that's set. Put the must-fix moves first, keep it to the moves and watches, and skip players with nothing to report.
