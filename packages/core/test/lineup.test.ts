@@ -172,7 +172,7 @@ describe("optimizeLineup", () => {
     expect(slotOf(r, "Back B")).toBe("BE");
   });
 
-  it("flags a questionable starter without a same-time-or-later backup", () => {
+  it("flags a questionable starter with no backup still unlocked at his inactives", () => {
     const r = optimizeLineup(
       roster(
         [p("WR", "Night Receiver", "WR", 16, { status: "QUESTIONABLE", kickoff: KICK.night })],
@@ -198,6 +198,28 @@ describe("optimizeLineup", () => {
       { WR: 1 },
     );
     expect(r.risks[0]!.detail).toMatch(/Late Receiver/);
+  });
+
+  it("counts an earlier game as a pivot if it starts after the starter's inactives", () => {
+    // Inactives for a 4:25 PM starter come out around 2:55 PM: a 4:05 PM backup
+    // is still unlocked, a 1:00 PM one isn't.
+    const r = optimizeLineup(
+      roster(
+        [
+          p("RB", "Late Starter", "RB", 16, {
+            status: "QUESTIONABLE",
+            kickoff: "2026-10-25T20:25:00.000Z",
+          }),
+        ],
+        [
+          p("BE", "Four-oh-five Back", "RB", 8, { kickoff: "2026-10-25T20:05:00.000Z" }),
+          p("BE", "One o'clock Back", "RB", 9, { kickoff: KICK.early }),
+          p("BE", "Right at inactives", "RB", 7, { kickoff: "2026-10-25T18:55:00.000Z" }),
+        ],
+      ),
+      { RB: 1 },
+    );
+    expect(r.risks[0]!.detail).toMatch(/: Four-oh-five Back$/);
   });
 
   it("reports a slot nobody can fill", () => {

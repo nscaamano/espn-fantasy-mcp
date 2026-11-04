@@ -15,7 +15,7 @@ Use the league the user named, or every league from `list_leagues`. For each one
 2. **`get_my_roster`** for the current week.
 3. **`get_matchup`** for the projected score on both sides and the margin.
 4. **`get_optimal_lineup`** for the best lineup by projection. It already handles slot eligibility, byes, OUT/IR/SUSPENDED players, locked players and the user's pending claims, and lists `risks`:
-   - questionable starters without a same-time-or-later backup (`staleTag` means the tag may be out of date, so check the news first);
+   - questionable starters with no pivot: no bench backup whose game starts after the starter's inactives come out, about 90 minutes before his kickoff (`staleTag` means the tag may be out of date, so check the news first);
    - slots nobody can fill, including a best option projecting 0, with free agents and their deadline (a WAIVERS player by `waiverClears`, a free agent before `kickoff`), or the `pendingClaim` that already covers it;
    - IR_INELIGIBLE: a player on IR who isn't IR-eligible anymore. This blocks every add and claim, so fix it first.
 
@@ -57,15 +57,15 @@ If you have no web search, say so, and use the ESPN tags and projections only, l
 - **Start from `get_optimal_lineup`'s `moves`**, then adjust for the news: a player the news rules out comes out, and a questionable player cleared by the news can go back in. FLEX takes RB, WR or TE. OP (superflex) takes QB, RB, WR or TE.
 - **Pickups:**
   - An `EMPTY_SLOT` risk already carries the options: its `pendingClaim`, or else its `freeAgents` and, with a full roster, a `drop`.
-  - A `GAME_TIME` risk with no bench backup at the same time or later, or a starter the news rules out with nobody healthy behind him, carries none. Call `get_free_agents` for that slot and pick a fill-in who kicks off at the same time or later, so the user can still pivot after inactives.
+  - A `GAME_TIME` risk with no pivot, or a starter the news rules out with nobody healthy behind him, carries none. Call `get_free_agents` for that slot and pick a fill-in whose game starts after the starter's inactives come out (about 90 minutes before his kickoff), so the user can still pivot.
   - A FREE_AGENT can be added until his kickoff. A WAIVERS player only helps if `waiverClears` comes before his game.
-  - With a full roster, name a drop for every pickup. The risk's `drop` is just the lowest season projection, so check his role and upside first, and never drop the only late backup for a questionable starter.
+  - With a full roster, name a drop for every pickup. The risk's `drop` is just the lowest season projection, so check his role and upside first, and never drop the only pivot for a questionable starter.
   - A fill-in the news names (a backup taking over) who isn't in those lists: check him with `get_player`, which says whether he's available in this league or who has him.
   - A hole no free agent fills (a starter out for weeks, the best free agent far below him): suggest the trades skill for that league.
 - **Superflex:** start the two best-projected QBs regardless of name, and check both for byes.
 - **Default to the safe lineup.** A questionable star sits until news clears him, then gets swapped in. A forgotten swap should never mean a zero. Give the user the deadline for that swap: his kickoff, or inactives about 90 minutes before.
 - **Lineups lock per player at kickoff** (`game.kickoff`), not at the week's first game. A Sunday or Monday player can still be swapped after Thursday's game.
-- **Late-game questionable players** need a backup who kicks off at the same time or later, ideally a teammate who absorbs his work. Otherwise the user can't pivot once inactives come out. This matters most for Sunday night and Monday night games.
+- **Late-game questionable players** need a backup whose game starts after the starter's inactives come out (about 90 minutes before his kickoff), ideally a teammate who absorbs his work. A 4:05 PM backup still works for a 4:25 PM starter; a 1:00 PM one doesn't. Otherwise the user can't pivot once inactives come out. This matters most for Sunday night and Monday night games.
 - **Don't churn.** Leave near-equal choices (under about 1 point apart) alone unless the news breaks the tie.
 
 ## 5. Report

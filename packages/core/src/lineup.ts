@@ -15,6 +15,12 @@ import type {
 
 const CANT_PLAY = new Set(["OUT", "IR", "SUSPENDED"]);
 const GAME_TIME = new Set(["QUESTIONABLE", "DOUBTFUL"]);
+/**
+ * Inactives come out about this long before kickoff. A bench player whose game
+ * starts after that is still unlocked when they do, so he's a pivot even if he
+ * kicks off before the starter (a 4:05 PM backup for a 4:25 PM starter).
+ */
+export const INACTIVES_LEAD_MS = 90 * 60 * 1000;
 
 // Tie-breakers, far below a projection's 0.01 resolution: a filled slot beats
 // an empty one, and the current slot beats an equal swap, so nothing churns.
@@ -334,18 +340,18 @@ export function optimizeLineup(
   const risks: Risk[] = [];
   const startingIds = new Set(newSlot.keys());
   const bench = candidates.filter((c) => !startingIds.has(c.player.id));
-  /** A bench player who's the only late backup for a game-time starter: never suggested as a drop. */
+  /** A bench player who's the only pivot for a game-time starter: never suggested as a drop. */
   const onlyPivots = new Set<string>();
   for (const { slot, s } of chosen.values()) {
     const p = s.player;
     if (GAME_TIME.has(p.injuryStatus) && p.game) {
-      const kickoff = Date.parse(p.game.kickoff);
+      const inactives = Date.parse(p.game.kickoff) - INACTIVES_LEAD_MS;
       const backups = bench
         .filter(
           (b) =>
             b.player.eligibleSlots.includes(slot) &&
             b.player.game !== null &&
-            Date.parse(b.player.game.kickoff) >= kickoff,
+            Date.parse(b.player.game.kickoff) > inactives,
         )
         .map((b) => b.player.name);
       if (backups.length === 1) onlyPivots.add(backups[0]!);
@@ -355,8 +361,8 @@ export function optimizeLineup(
         slot,
         player: p.name,
         detail: backups.length
-          ? `${p.injuryStatus}; bench backups who play at the same time or later: ${backups.join(", ")}`
-          : `${p.injuryStatus}; no healthy bench backup plays at the same time or later, so there's no pivot after inactives`,
+          ? `${p.injuryStatus}; bench backups whose games start after his inactives come out (about 90 minutes before kickoff): ${backups.join(", ")}`
+          : `${p.injuryStatus}; no healthy bench backup kicks off after his inactives come out (about 90 minutes before kickoff), so there's no pivot`,
         ...(stale ? { staleTag: stale } : {}),
       });
     }

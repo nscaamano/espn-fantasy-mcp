@@ -1,17 +1,22 @@
 # Status
 
-Last updated: 2026-10-29 · Design and specs: [docs/design.md](docs/design.md)
+Last updated: 2026-11-04 · Design and specs: [docs/design.md](docs/design.md)
 
-**Next session**, in order:
+**Next session: tooling requests, round 2** (2026-11-04, from two weeks of real use through the connector). Ordered easiest first, which also puts the assistant's own top pick (news) near the top. Each ships with a live check, tests, the skills updated to use it, and README/design rows.
 
-1. ~~**Publish client and core 0.4.0**~~ done 2026-10-29 (adds `searchPlayers`/`getPlayer` and the `PlayerInfo`/`PlayerSearch` schemas).
-2. **Step 4 done-checks:** a real Saturday or Sunday lineup check (now with the tuned `weekly-check`) and a Tuesday waiver run, with the user judging the moves.
-3. **Test the trades skill by hand** (user): run `/trades` (or ask through the connector) in a real league a few times, and tune the skill from what it gets wrong. Only then consider automating it: a scheduled Claude routine that runs it weekly and emails the proposals is the cheapest option. The web app can't run skills, since it has no model.
-4. **Reconnect cached clients** (Claude's connector, `/mcp` in Claude Code) after the deploy, so they see `get_player`.
+1. [x] **Pivot fix** done 2026-11-04 (under Done).
+2. [ ] **Player news, built in** (easy–medium; the assistant's top pick). `lastNewsDate` says when something changed, not what. ESPN's public fantasy news feed (`site.api.espn.com/apis/fantasy/v2/games/ffl/news/players?playerId=<id>`, one player per request) carries short Rotowire blurbs next to long ESPN articles. Plan (agreed 2026-11-04): attach the latest blurb to every `get_optimal_lineup` risk about a player and to `get_player`'s matches, add `get_player_news(league, names, limit?)` for anyone else, and have `weekly-check` web-search only when the blurb is stale.
+3. [ ] **FAAB price history by position** (medium–easy; replaces tooling request 6). Winning bids per position over recent weeks ("QB: 6 claims, median $14, max $20"), to price bids from what each league actually pays. QBs cost far more in superflex: a $3 QB bid lost to $20. `getTransactions` (`mTransactions2`) already gives every team's EXECUTED waiver adds with bids and positions per week, so this is one request per past week (cache them: past weeks don't change), aggregated. Priority leagues have no bids: say so. The `waivers` skill uses it for bids.
+4. [ ] **Bye coverage planner** (medium). `get_bye_coverage(league, fromWeek?, toWeek?)`: for each week, which starting slots the roster can't fill (byes, plus players on IR or OUT now), e.g. "week 10: one QB available, need two (QB + OP)". The slot fill is the optimizer's assignment (flex and superflex slots count), with eligibility only, no projections. A QB bye conflict decided a real superflex trade and was found by hand. `trades` and `waivers` use it; `weekly-check` can mention next week's holes.
+5. [ ] **Trade partner finder** (medium–hard). `find_trade_partners(league, need, offer?)`: teams with a surplus at the user's need and a shortage at what the user offers, with the specific players. Surplus and shortage come from each roster's best lineup by season projection (the planner's assignment again): starters vs useful bench depth. It needs every team's roster (one request each, about 0.34 MB) and replaces 5–11 `get_team_roster` calls in the `trades` skill. Build after the planner, which it reuses.
+
+**Ongoing (user):** the Step 4 done-checks (a real weekend `weekly-check` and a Tuesday `waivers` run), testing the `trades` skill by hand, and reconnecting cached clients after each deploy that adds tools or fields. Publishing a new core to npm is optional now (no app needs the new types), so batch it.
 
 **After any deploy that adds output fields:** clients that cache tool schemas (Claude's connectors) reject the new fields ("must NOT have additional properties") until their tool list is refreshed, because zod objects become JSON Schemas with `additionalProperties: false`. Reconnect the connector (or `/mcp` → Reconnect in Claude Code) after deploying. Clients that list tools per session, like the web app, aren't affected.
 
 ## Done
+
+- [x] **Pivot fix** (round 2, item 1; 2026-11-04). A `GAME_TIME` starter's pivots are bench players whose game starts after his inactives come out (`INACTIVES_LEAD_MS`, 90 minutes before his kickoff), not only those at the same time or later: a 4:05 PM backup now counts for a 4:25 PM starter, a 1:00 PM one still doesn't. The same rule protects a starter's only pivot from drop suggestions. The no-pivot wording keeps its "no healthy bench backup" prefix, which clients match on.
 
 - [x] **Player lookup by name** (tooling request 5, 2026-10-29). `get_player(league, name, limit?, week?)` takes full or partial names and returns players of any status: ROSTERED (team, lineup slot, `isMine`), FREE_AGENT, or WAIVERS (with `waiverClears`), each with the free-agent fields (injury, game, week and season points and projections, % rostered, positional rank).
   - ESPN's `filterName` on `kona_player_info`, checked live: it matches the start of a first or last name as typed, needs a sort when given a `limit`, and returns every status with `onTeamId`. espn-api has no server-side name search (it downloads every player and matches exact names).
@@ -100,7 +105,7 @@ After a few weeks of use from the Claude iPhone app, the assistant listed the to
 3. [x] **Free-agent sort by season value** (2026-10-25). `get_free_agents` takes `sort: "week" | "season"`; `season` ranks by ESPN's full-season projection, which surfaces stash candidates. Schedule strength is a separate, medium job (see Matchup strength under ideas). True rest-of-season projections are still an open question.
 4. [x] **Other teams' rosters** (2026-10-25). `get_teams` (record, points, seed, waiver rank, FAAB left) and `get_team_roster` (any team, same shape as `get_my_roster`). These were the data the trades skill needed.
 5. [x] **Player lookup by name** (2026-10-29): `get_player`, under Done.
-6. [ ] **FAAB bid history by position.** Medium. Winning bids are in `get_recent_activity`, but a season's worth means paging the activity endpoint and aggregating by position and week. Same as FAAB market memory under ideas.
+6. [ ] **FAAB bid history by position.** Now round 2, item 3 (top of this file), built on `mTransactions2` instead of paging activity. Was: Medium. Winning bids are in `get_recent_activity`, but a season's worth means paging the activity endpoint and aggregating by position and week. Same as FAAB market memory under ideas.
 7. [x] **Lineup optimizer** (2026-10-25). `get_optimal_lineup` (`core/src/lineup.ts`) solves the slot assignment exactly (Hungarian algorithm) over the league's starting slots, with stored rules applied.
    - It excludes byes and OUT/IR/SUSPENDED players, keeps locked players in place, and leaves IR slots alone. Ties keep the current lineup, so it doesn't churn.
    - It returns the moves (benchings come with a reason) and before/after totals, plus `risks`:
@@ -110,7 +115,7 @@ After a few weeks of use from the Claude iPhone app, the assistant listed the to
    - `weekly-check` now starts from it and adds the news.
    - Verified live: it caught next week's superflex lineup with an RB slot nobody can fill (the starter is on bye and the only other RB projects 0).
    - Tuned after the first run from the phone (2026-10-25). Every move has a reason: incoming players say whom they replace. EMPTY_SLOT and NO_PROJECTION risks carry the top three free agents for that slot (fetched per slot, in parallel; a failed lookup just leaves them out). NO_PROJECTION now says to treat the slot as open, since the optimizer only starts a 0-projection player when nobody else can.
-8. [ ] **Practice reports and inactives.** Hard. ESPN's fantasy API has no practice participation, and inactives land about 90 minutes before kickoff. It would need ESPN's separate, also undocumented, news feed or another source, plus polling on game day. Until then, the skills use web search.
+8. [ ] **Practice reports and inactives.** Partly covered by round 2, item 2: ESPN's player news blurbs report practice participation and inactive calls as text. Structured data is still missing. Hard. ESPN's fantasy API has no practice participation, and inactives land about 90 minutes before kickoff. It would need ESPN's separate, also undocumented, news feed or another source, plus polling on game day. Until then, the skills use web search.
 9. [ ] **Write actions** (`set_lineup`, `add_drop`, `submit_claim`). Hardest, and it needs a decision first: the project is read-only by design. ESPN's write endpoints are unofficial and thinly covered by espn-api, a bad call costs a real roster move, and the hosted server's token-in-URL auth would be guarding writes (see OAuth under open questions). If pursued: lineup moves first (reversible until kickoff), every write behind an explicit confirmation (MCP elicitation where the client supports it), and claims last.
 
 ## Later
@@ -136,7 +141,7 @@ After a few weeks of use from the Claude iPhone app, the assistant listed the to
 ## Ideas / reach goals
 
 - **Matchup strength.** ESPN's `mPositionalRatings` gives the defense-vs-position rank, which is useful for start/sit tiebreaks.
-- **FAAB market memory.** Log every league's winning bids weekly (`getRecentActivity` already returns them) to learn what a breakout RB actually costs in each league.
+- **FAAB market memory** (now round 2, item 3). Log every league's winning bids weekly (`getRecentActivity` already returns them) to learn what a breakout RB actually costs in each league.
 - **Manager profiles** for trades: activity level, positional needs, how often they accept trades.
 - **Pre-lock alerts.** A scheduled check (Claude Code routines or a cron) that pings when a starter turns OUT before kickoff.
 - **Other platforms** (Sleeper, Yahoo) as more clients behind the same core contract.
