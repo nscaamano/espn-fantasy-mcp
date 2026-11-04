@@ -281,7 +281,7 @@ export class FantasyService {
   /**
    * Teams with depth at `need` that could use what the user can spare at
    * `offer` (inferred when omitted), from every roster's best lineup by
-   * full-season projection. One roster request per team, in parallel.
+   * ESPN's season (rest-of-season) projection. One roster request per team, in parallel.
    */
   async findTradePartners(
     league: string,
@@ -373,7 +373,7 @@ export class FantasyService {
 
   /**
    * Top available players at a position by this week's projection, or by
-   * ESPN's full-season projection with `sort: "season"`. ESPN only sorts by
+   * ESPN's season (rest-of-season) projection with `sort: "season"`. ESPN only sorts by
    * % rostered, so this fetches a wider pool and re-sorts it.
    */
   async getFreeAgents(

@@ -38,7 +38,7 @@ Trades are per league. Use the league the user named. Otherwise, go through each
 
 Value is points over the rest of the season, not this week. ESPN's numbers are one input; form your own view, and say why when it differs.
 
-- **Rest-of-season points:** `seasonProjectedPoints` is the full season, not what's left. Estimate the rest as roughly `seasonProjectedPoints` ÷ 17 per game, times his games left over the weeks that matter (minus a bye still to come), and label it as derived. Where his role has changed, trust the recent `projectedPoints` over the season figure. Web-search rest-of-season rankings for this league's format, and cite the source and date.
+- **Rest-of-season points:** during the season, `seasonProjectedPoints` is ESPN's projection for the games left (byes already accounted for), not the whole season. Use it as the rest-of-season figure; for a per-game rate, divide by his games left. For a contender, weigh the playoff weeks most. Where his role has changed, trust the recent `projectedPoints` over the season figure. Web-search rest-of-season rankings for this league's format, and cite the source and date.
 - **Over replacement:** what matters is how much he beats the best free agent at his position in this league. A WR in a deep free-agent pool is worth less than a TE or superflex QB with nothing behind him.
 - **Scoring format:**
   - Full PPR lifts high-target WRs, TEs and pass-catching backs. Half-PPR lifts them less; in standard, touchdown-heavy backs gain.

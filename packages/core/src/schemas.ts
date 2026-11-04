@@ -61,7 +61,11 @@ export const Player = z.object({
   /** For the requested week. */
   projectedPoints: z.number().nullable(),
   actualPoints: z.number().nullable(),
-  /** ESPN's full-season projection: a steadier measure of value than one week (e.g. on a bye). */
+  /**
+   * ESPN's season projection. During the season it covers the games left (checked live in
+   * week 9: it tracks the weekly projection times the games left, below some players' points
+   * so far), so it's a rest-of-season figure: a steadier measure of value than one week.
+   */
   seasonProjectedPoints: z.number().nullable(),
   percentRostered: z.number().nullable(),
   /**
@@ -663,7 +667,7 @@ export type PositionRank = z.infer<typeof PositionRank>;
 
 /**
  * Candidate trade partners for one need, from every roster's best lineup by
- * full-season projection. Mechanical: fairness and the proposal are the
+ * ESPN's season (rest-of-season) projection. Mechanical: fairness and the proposal are the
  * caller's job.
  */
 export const TradePartners = z.object({
