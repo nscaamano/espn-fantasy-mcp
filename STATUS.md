@@ -12,6 +12,12 @@ Last updated: 2026-11-04 · Design and specs: [docs/design.md](docs/design.md)
 
 Built in parallel by three agents in separate worktrees, reviewed and merged one by one. Next: use them for a week (the done-checks below), then tune from what they get wrong.
 
+**Next: bid competition** (medium; asked 2026-11-04). Predict who will bid on a waiver target and roughly how much, so a bid can beat the likely second-highest one. A new starting QB in superflex recently went for $20 against bids of $8, $6 and the user's $3. The signals were visible before the run: the player had just been named the starter, the same league had paid $17 for a new starter earlier, and the winner had one of the largest budgets plus a collapsing QB room.
+- **Tool:** `get_bid_competition(league, players[])`. Per target: likely bidders (teams weak at his position by the trade finder's positional ranking, or with bye holes), each with `faabRemaining` (`get_teams` already has it) and their bid history at that position; comparable wins in this league (new starters, handcuffs, streamers); and a suggested range, enough to beat the likely second bid, capped at what he's worth to the user.
+- **Data:** the `mTransactions2` log already used by `get_faab_prices` keeps every team's winning and losing bids (outbid claims keep their bid), so per-manager profiles come from it: claims made, share of budget spent, highest bid by position. Cache past weeks as now.
+- **Limits:** other teams' queued claims aren't visible before the run, and a season is about 50 wins across 12 managers, so it gives tendencies and a range, not a prediction. Say so in the description.
+- **Skill:** `waivers` explains each contested bid ("two teams need a QB, one has $97; new starters went for $17–20 here; bid $21 or pass").
+
 **Ongoing (user):** the Step 4 done-checks (a real weekend `weekly-check` and a Tuesday `waivers` run), testing the `trades` skill by hand, and reconnecting cached clients after each deploy that adds tools or fields. Publishing a new core to npm is optional now (no app needs the new types), so batch it.
 
 **After any deploy that adds output fields:** clients that cache tool schemas (Claude's connectors) reject the new fields ("must NOT have additional properties") until their tool list is refreshed, because zod objects become JSON Schemas with `additionalProperties: false`. Reconnect the connector (or `/mcp` → Reconnect in Claude Code) after deploying. Clients that list tools per session, like the web app, aren't affected.
