@@ -14,6 +14,7 @@ confirms the current season's shapes.
 | `pro_schedule.json` | `pro_schedule_2024.json`, week 1 games only | `proTeamSchedules_wl` |
 | `pending_transactions.json` | Recorded live on 2026-10-13 (two queued waiver claims); see below | `mPendingTransactions` |
 | `transactions.json` | Hand-written in the shape recorded live on 2026-10-28 (a FAAB waiver run); see below | `mTransactions2`, week 8 |
+| `player_news.json` | Hand-written in the shape seen live on 2026-11-04 (generic names); its items for player 0 are served as the requested player's | `site.api.espn.com` fantasy news feed |
 | `player_search.json` | Hand-written in the shape seen live on 2026-10-29; see below | `kona_player_info` with `filterName`, week 1 of 2018 |
 
 Per-player stats were cut to the scoring periods the tests read, and stat

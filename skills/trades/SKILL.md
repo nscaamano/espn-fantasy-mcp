@@ -40,7 +40,7 @@ Value is points over the rest of the season, not this week. ESPN's numbers are o
   - Full PPR lifts high-target WRs, TEs and pass-catching backs. Half-PPR lifts them less; in standard, touchdown-heavy backs gain.
   - Superflex: a startable QB is worth far more than in a one-QB league, often a top RB or WR. Never leave the user with fewer than two startable QBs.
   - K and D/ST have almost no trade value: stream them instead.
-- **Situation:** role (snap share, targets, carries over the last few weeks), injury and return date, upcoming schedule, byes left, and, for a contender, the playoff weeks (`playoffStartWeek` onward). Web-search role and news for every player in a proposal, and cite source and date.
+- **Situation:** role (snap share, targets, carries over the last few weeks), injury and return date, upcoming schedule, byes left, and, for a contender, the playoff weeks (`playoffStartWeek` onward). Read recent news for every player in a proposal with `get_player_news` (one call for all of them), then web-search role and usage the blurbs don't cover. Cite source and date.
 
 ## 4. Build proposals
 

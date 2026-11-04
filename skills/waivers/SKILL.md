@@ -52,7 +52,7 @@ Call `get_free_agents` for each position with a hole, plus OP or QB in superflex
 ESPN's projections and % rostered are inputs from one model and from the crowd. They aren't the answer. Form your own view, and when it differs from ESPN's numbers, say why.
 
 - Does he fill this week's hole? A player on a bye this week can't. Or is he a rest-of-season upgrade?
-- **His role:** starter, committee or handcuff. Check his snap share, carries or targets over the last few weeks, and his place on the depth chart. Web-search his usage and news, and cite source and date.
+- **His role:** starter, committee or handcuff. Check his snap share, carries or targets over the last few weeks, and his place on the depth chart. Read his recent blurbs with `get_player_news` (all targets in one call), then web-search usage numbers the blurbs don't give. Cite source and date.
 - **Has the situation changed?** If the player ahead of him got hurt, check how long he'll be out. A season-ending injury turns a one-week fill-in into a rest-of-season starter, and ESPN's season projection can lag behind that change.
 - **Upcoming schedule:** the opponents over the next few weeks, not just this one.
 - **Momentum:** a rising `percentChange` means other managers are noticing, so he'll cost more.

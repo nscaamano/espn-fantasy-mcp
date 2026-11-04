@@ -50,6 +50,7 @@ describe("MCP server", () => {
       "get_optimal_lineup",
       "get_pending_claims",
       "get_player",
+      "get_player_news",
       "get_recent_activity",
       "get_scoreboard",
       "get_team_roster",
@@ -147,6 +148,32 @@ describe("MCP server", () => {
     expect(none.structuredContent).toMatchObject({ players: [], totalMatches: 0 });
     const short = await call("get_player", { league: "test", name: " x " });
     expect(short.isError).toBe(true);
+  });
+
+  it("returns news for named players, with each lookup's latest blurb attached", async () => {
+    const { call } = await connect();
+    const res = await call("get_player_news", {
+      league: "test",
+      names: ["antonio brown", "Nobody Atall"],
+      limit: 1,
+    });
+    expect(res.isError).toBeFalsy();
+    expect(res.structuredContent).toMatchObject({
+      players: [
+        { name: "Antonio Brown", otherMatches: 0, news: [{ published: "2026-11-02T16:43:16Z" }] },
+      ],
+      notFound: ["Nobody Atall"],
+    });
+    const found = await call("get_player", { league: "test", name: "antonio brown", week: 1 });
+    expect(found.structuredContent).toMatchObject({
+      players: [{ news: { published: "2026-11-02T16:43:16Z" } }],
+    });
+    const tooMany = await call("get_player_news", {
+      league: "test",
+      names: ["A1", "B2"],
+      limit: 6,
+    });
+    expect(tooMany.isError).toBe(true);
   });
 
   it("returns my pending claims, and an empty list when none are queued", async () => {

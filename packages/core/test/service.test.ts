@@ -153,6 +153,39 @@ describe("FantasyService", () => {
     expect(pat.totalMatches).toBe(3);
   });
 
+  it("attaches each match's latest news", async () => {
+    const [brown] = (await service().svc.getPlayer("test", "Antonio Brown", 5, 1)).players;
+    expect(brown!.news).toEqual({
+      headline: expect.stringMatching(/^When asked whether Receiver/),
+      story: expect.stringMatching(/inactive for Sunday/),
+      published: "2026-11-02T16:43:16Z",
+    });
+  });
+
+  it("returns recent news for named players, and says which names matched nobody", async () => {
+    const { svc, calls } = service();
+    const news = await svc.getPlayerNews(
+      "test",
+      ["Antonio Brown", "pat sample", "Nobody Atall"],
+      2,
+    );
+    expect(news.notFound).toEqual(["Nobody Atall"]);
+    expect(news.players.map((p) => [p.query, p.name, p.otherMatches])).toEqual([
+      ["Antonio Brown", "Antonio Brown", 0],
+      // Two players share the name: the most rostered is used, and it says so.
+      ["pat sample", "Pat Sample", 1],
+    ]);
+    expect(news.players[0]!.news.map((n) => n.published)).toEqual([
+      "2026-11-02T16:43:16Z",
+      "2026-10-31T17:07:17Z",
+    ]);
+    expect(
+      calls
+        .filter((c) => c.url.pathname.includes("/news/"))
+        .map((c) => c.url.searchParams.get("playerId")),
+    ).toEqual(["13934", expect.any(String)]);
+  });
+
   it("returns no players for an unknown name", async () => {
     const found = await service().svc.getPlayer("test", "Nobody Atall", 5, 1);
     expect(found).toMatchObject({ players: [], totalMatches: 0 });
@@ -342,6 +375,51 @@ describe("FantasyService across leagues and teams", () => {
     for (const r of lineup.risks.filter((x) => x.type === "GAME_TIME")) {
       expect(r.freeAgents).toBeUndefined();
     }
+  });
+
+  it("attaches the latest news to every risk about a player, and skips it when the feed fails", async () => {
+    /** The fixtures with team 1's QB questionable and unlocked, so starting him is a GAME_TIME risk. */
+    const questionable = (newsDown = false) => {
+      const { fetch } = fixtureFetch();
+      const wrapped: typeof fetch = async (input, init) => {
+        const url = new URL(String(input));
+        if (newsDown && url.pathname.includes("/news/"))
+          return new Response("down", { status: 500 });
+        const res = await fetch(input, init);
+        if (!url.searchParams.getAll("view").includes("mRoster")) return res;
+        const body = (await res.json()) as {
+          teams: {
+            id: number;
+            roster: {
+              entries: {
+                lineupSlotId: number;
+                playerPoolEntry: { lineupLocked: boolean; player: { injuryStatus: string } };
+              }[];
+            };
+          }[];
+        };
+        const qb = body.teams
+          .find((t) => t.id === 1)!
+          .roster.entries.find((e) => e.lineupSlotId === 0)!;
+        qb.playerPoolEntry.player.injuryStatus = "QUESTIONABLE";
+        qb.playerPoolEntry.lineupLocked = false;
+        return new Response(JSON.stringify(body), { status: 200 });
+      };
+      // The day before the fixtures' week 1 games, so nothing is locked yet.
+      return new FantasyService(new EspnClient({ fetch: wrapped, retries: 0 }), config(1), {
+        now: () => new Date("2024-09-07T12:00:00.000Z"),
+      });
+    };
+
+    const lineup = await questionable().getOptimalLineup("test", 1);
+    const risk = lineup.risks.find((r) => r.type === "GAME_TIME");
+    expect(risk?.news).toMatchObject({ published: "2026-11-02T16:43:16Z" });
+    for (const r of lineup.risks.filter((x) => x.player === null)) expect(r.news).toBeUndefined();
+
+    // News is a bonus: without it the lineup and its risks are the same.
+    const without = await questionable(true).getOptimalLineup("test", 1);
+    expect(without.risks.map((r) => r.type)).toEqual(lineup.risks.map((r) => r.type));
+    expect(without.risks.every((r) => r.news === undefined)).toBe(true);
   });
 
   it("lists the league's teams with mine marked", async () => {

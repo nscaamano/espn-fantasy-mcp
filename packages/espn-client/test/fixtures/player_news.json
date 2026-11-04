@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-11-04T15:00:00Z",
+  "resultsOffset": 0,
+  "status": "success",
+  "resultsLimit": 10,
+  "resultsCount": 5,
+  "feed": [
+    {
+      "id": 1001,
+      "type": "Story",
+      "headline": "Rest-of-season rankings: three backs reach RB1 status",
+      "description": "Weekly rest-of-season rankings by position.",
+      "story": "<p>Each week, a columnist ranks players by position based on their fantasy value for the rest of the season.</p>",
+      "published": "2026-11-03T16:36:40Z",
+      "playerId": 0
+    },
+    {
+      "id": 1002,
+      "type": "Rotowire",
+      "headline": "Receiver (knee) didn't practice Friday.",
+      "description": "Receiver (knee) didn't practice Friday.",
+      "story": "<b>Receiver</b> entered the weekend   with a questionable tag.",
+      "published": "2026-10-30T20:10:00Z",
+      "playerId": 0
+    },
+    {
+      "id": 1003,
+      "type": "Rotowire",
+      "headline": "When asked whether Receiver (ankle/knee) might practice this week, his coach said Monday, \"We'll see.\"",
+      "description": "When asked whether Receiver (ankle/knee) might practice this week, his coach said Monday, \"We'll see.\"",
+      "story": "Receiver was inactive for Sunday's win, and the comment implies his status for this weekend is uncertain.",
+      "published": "2026-11-02T16:43:16Z",
+      "playerId": 0
+    },
+    {
+      "id": 1004,
+      "type": "Rotowire",
+      "headline": "Receiver (knee/ankle) has been ruled out for Sunday's game.",
+      "description": "Receiver (knee/ankle) has been ruled out for Sunday's game.",
+      "story": "",
+      "published": "2026-10-31T17:07:17Z",
+      "playerId": 0
+    },
+    {
+      "id": 1005,
+      "type": "Rotowire",
+      "headline": "A teammate is expected to see more targets.",
+      "description": "A teammate is expected to see more targets.",
+      "story": "About another player.",
+      "published": "2026-11-01T12:00:00Z",
+      "playerId": 99999
+    }
+  ]
+}

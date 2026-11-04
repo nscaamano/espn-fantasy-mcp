@@ -4,13 +4,14 @@ import {
   parseFreeAgents,
   parseLeagueSettings,
   parseMatchups,
+  parseNews,
   parsePendingClaims,
   parsePlayerPool,
   parseProTeams,
   parseRosters,
   parseTransactions,
 } from "../src/parse.js";
-import type { RawCommunication, RawLeague, RawProSchedule } from "../src/raw.js";
+import type { RawCommunication, RawLeague, RawNewsFeed, RawProSchedule } from "../src/raw.js";
 import { fixture } from "./fixtures.js";
 
 const league = fixture<RawLeague>("league.json");
@@ -304,5 +305,37 @@ describe("parseTransactions", () => {
       executionType: "CANCEL",
       processDate: null,
     });
+  });
+});
+
+describe("parseNews", () => {
+  const feed = fixture<RawNewsFeed>("player_news.json");
+
+  it("keeps the player's blurbs, newest first, as plain text", () => {
+    const news = parseNews(feed, 0);
+    expect(news.map((n) => n.published)).toEqual([
+      "2026-11-02T16:43:16Z",
+      "2026-10-31T17:07:17Z",
+      "2026-10-30T20:10:00Z",
+    ]);
+    expect(news[0]).toEqual({
+      playerId: 0,
+      headline:
+        'When asked whether Receiver (ankle/knee) might practice this week, his coach said Monday, "We\'ll see."',
+      story:
+        "Receiver was inactive for Sunday's win, and the comment implies his status for this weekend is uncertain.",
+      published: "2026-11-02T16:43:16Z",
+    });
+    // An empty story is null; tags and runs of spaces are gone.
+    expect(news[1]!.story).toBeNull();
+    expect(news[2]!.story).toBe("Receiver entered the weekend with a questionable tag.");
+  });
+
+  it("drops ESPN's articles and other players' items", () => {
+    expect(parseNews(feed, 0).some((n) => n.headline.startsWith("Rest-of-season"))).toBe(false);
+    expect(parseNews(feed, 99999).map((n) => n.headline)).toEqual([
+      "A teammate is expected to see more targets.",
+    ]);
+    expect(parseNews({}, 1)).toEqual([]);
   });
 });

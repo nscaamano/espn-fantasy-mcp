@@ -17,7 +17,9 @@ export function fixtureFetch() {
     calls.push({ url, headers });
     const views = url.searchParams.getAll("view");
     let body: unknown;
-    if (url.pathname.includes("/communication")) body = fixture("recent_activity.json");
+    if (url.pathname.includes("/news/players"))
+      body = newsFor(Number(url.searchParams.get("playerId")));
+    else if (url.pathname.includes("/communication")) body = fixture("recent_activity.json");
     else if (views.includes("proTeamSchedules_wl")) body = fixture("pro_schedule.json");
     else if (views.includes("kona_player_info")) {
       const filter = headers["x-fantasy-filter"];
@@ -50,4 +52,14 @@ function searchByName(name: string) {
         p.fullName.toLowerCase().startsWith(q) || p.lastName.toLowerCase().startsWith(q),
     ),
   };
+}
+
+interface NewsFeed {
+  feed: { playerId?: number }[];
+}
+
+/** The news fixture as if about `playerId`: its items for player 0 are his. */
+function newsFor(playerId: number): NewsFeed {
+  const raw = fixture<NewsFeed>("player_news.json");
+  return { ...raw, feed: raw.feed.map((n) => (n.playerId === 0 ? { ...n, playerId } : n)) };
 }

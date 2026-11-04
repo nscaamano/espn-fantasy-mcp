@@ -9,6 +9,7 @@ import {
   parseFreeAgents,
   parseLeagueSettings,
   parseMatchups,
+  parseNews,
   parsePendingClaims,
   parseTransactions,
   parsePlayer,
@@ -18,12 +19,13 @@ import {
 } from "./parse.js";
 import { nameKey, nameMatches, nameWords } from "./names.js";
 import { slotIdForPosition } from "./positions.js";
-import type { RawCommunication, RawLeague, RawProSchedule } from "./raw.js";
+import type { RawCommunication, RawLeague, RawNewsFeed, RawProSchedule } from "./raw.js";
 import type {
   EspnActivity,
   EspnFreeAgent,
   EspnLeagueSettings,
   EspnMatchup,
+  EspnNewsItem,
   EspnPendingClaim,
   EspnPoolPlayer,
   EspnTransaction,
@@ -34,6 +36,8 @@ import type {
 
 /** ESPN moved league reads to this host once; keep it configurable. */
 export const DEFAULT_BASE_URL = "https://lm-api-reads.fantasy.espn.com/apis/v3";
+/** ESPN's public fantasy news feed (no cookies). */
+export const DEFAULT_NEWS_URL = "https://site.api.espn.com/apis/fantasy/v2";
 const GAME = "ffl";
 
 export interface EspnClientOptions {
@@ -42,6 +46,8 @@ export interface EspnClientOptions {
   /** `SWID` cookie, including braces. Required for private leagues. */
   swid?: string;
   baseUrl?: string;
+  /** Where player news comes from. */
+  newsBaseUrl?: string;
   /** Per attempt. Default 20 s. */
   timeoutMs?: number;
   /** Extra attempts after a network failure or a 502/503/504. Default 1. */
@@ -69,6 +75,7 @@ const SEARCH_LIMIT = 50;
 
 export class EspnClient {
   private readonly baseUrl: string;
+  private readonly newsBaseUrl: string;
   private readonly cookie: string | undefined;
   private readonly timeoutMs: number;
   private readonly retries: number;
@@ -78,6 +85,7 @@ export class EspnClient {
 
   constructor(options: EspnClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
+    this.newsBaseUrl = (options.newsBaseUrl ?? DEFAULT_NEWS_URL).replace(/\/+$/, "");
     this.timeoutMs = options.timeoutMs ?? 20_000;
     this.retries = options.retries ?? 1;
     this.retryDelayMs = options.retryDelayMs ?? 500;
@@ -318,6 +326,20 @@ export class EspnClient {
     return transactions;
   }
 
+  /**
+   * A player's latest news blurbs, newest first: injuries, practice reports,
+   * inactives, role changes. ESPN's public feed allows one player per request.
+   * Its ESPN articles are dropped, so it's asked for more items than `limit`.
+   */
+  async getPlayerNews(playerId: number, limit = 3): Promise<EspnNewsItem[]> {
+    const url = new URL(`${this.newsBaseUrl}/games/${GAME}/news/players`);
+    url.searchParams.set("playerId", String(playerId));
+    url.searchParams.set("limit", String(Math.max(10, limit * 2)));
+    // Public data: the league cookies stay with league reads.
+    const raw = await this.request<RawNewsFeed>(url.toString(), undefined, { cookies: false });
+    return parseNews(raw, playerId).slice(0, limit);
+  }
+
   // ── Supporting reads ────────────────────────────────────────────────────────
 
   /** Player cards by id (any status), keyed by id. */
@@ -449,9 +471,13 @@ export class EspnClient {
     }
   }
 
-  private async request<T>(url: string, filter?: unknown): Promise<T> {
+  private async request<T>(
+    url: string,
+    filter?: unknown,
+    { cookies = true }: { cookies?: boolean } = {},
+  ): Promise<T> {
     const headers: Record<string, string> = { Accept: "application/json" };
-    if (this.cookie) headers.Cookie = this.cookie;
+    if (this.cookie && cookies) headers.Cookie = this.cookie;
     if (filter !== undefined) headers["x-fantasy-filter"] = JSON.stringify(filter);
 
     const res = await this.fetchWithRetry(url, headers);

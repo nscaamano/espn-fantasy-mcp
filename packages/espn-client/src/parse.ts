@@ -13,6 +13,7 @@ import type {
   RawLeague,
   RawMatchupSide,
   RawMember,
+  RawNewsFeed,
   RawPlayer,
   RawProSchedule,
   RawProTeam,
@@ -31,6 +32,7 @@ import type {
   EspnLeagueSettings,
   EspnMatchup,
   EspnMatchupSide,
+  EspnNewsItem,
   EspnPendingClaim,
   EspnPoolPlayer,
   EspnTransaction,
@@ -430,4 +432,29 @@ function proGames(t: RawProTeam): Record<number, EspnProGame> {
     };
   }
   return games;
+}
+
+/** Plain text: tags dropped, whitespace collapsed. ESPN's blurbs are plain already (checked live). */
+function plainText(s: string): string {
+  return s
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * A player's news blurbs, newest first. The feed mixes in ESPN articles about
+ * several players (rankings, columns); only the short per-player blurbs stay.
+ */
+export function parseNews(raw: RawNewsFeed, playerId: number): EspnNewsItem[] {
+  return (raw.feed ?? [])
+    .filter((n) => n.type === "Rotowire" && n.headline && n.published)
+    .filter((n) => n.playerId === undefined || n.playerId === playerId)
+    .map((n) => ({
+      playerId,
+      headline: plainText(n.headline!),
+      story: n.story ? plainText(n.story) || null : null,
+      published: n.published!,
+    }))
+    .sort((a, b) => Date.parse(b.published) - Date.parse(a.published));
 }

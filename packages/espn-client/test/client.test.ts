@@ -129,6 +129,23 @@ describe("EspnClient requests", () => {
     expect(activity[0]!.items[0]!.playerName).toBeNull();
   });
 
+  it("reads a player's news from the public feed, without the league cookies", async () => {
+    const { fetch, calls } = fixtureFetch();
+    const client = new EspnClient({ espnS2: "s2", swid: "{SWID}", fetch });
+    const news = await client.getPlayerNews(4047646, 2);
+    expect(calls[0]!.url.origin + calls[0]!.url.pathname).toBe(
+      "https://site.api.espn.com/apis/fantasy/v2/games/ffl/news/players",
+    );
+    expect(calls[0]!.url.searchParams.get("playerId")).toBe("4047646");
+    // Articles are dropped from the feed, so it asks for more than it returns.
+    expect(calls[0]!.url.searchParams.get("limit")).toBe("10");
+    expect(calls[0]!.headers.Cookie).toBeUndefined();
+    expect(news.map((n) => [n.playerId, n.published])).toEqual([
+      [4047646, "2026-11-02T16:43:16Z"],
+      [4047646, "2026-10-31T17:07:17Z"],
+    ]);
+  });
+
   it("caches pro team schedules per year", async () => {
     const { fetch, calls } = fixtureFetch();
     const client = new EspnClient({ fetch });

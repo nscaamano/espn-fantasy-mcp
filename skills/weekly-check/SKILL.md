@@ -19,7 +19,7 @@ Use the league the user named, or every league from `list_leagues`. For each one
    - slots nobody can fill, including a best option projecting 0, with free agents and their deadline (a WAIVERS player by `waiverClears`, a free agent before `kickoff`), or the `pendingClaim` that already covers it;
    - IR_INELIGIBLE: a player on IR who isn't IR-eligible anymore. This blocks every add and claim, so fix it first.
 
-   With a full roster, it names a `drop` for each pickup. Treat all of this as the starting point, not the answer: it doesn't know the news.
+   With a full roster, it names a `drop` for each pickup. Every risk about a player carries `news`: his latest ESPN news blurb, which usually says why he's flagged. Treat all of this as the starting point, not the answer.
 
 ## 2. Flag problems
 
@@ -43,14 +43,23 @@ Check every starter, then the bench:
 
 ## 3. Check the news
 
-Web-search every flagged or questionable player. Look for the team's injury report, practice participation (DNP, limited, full) and beat reporters. Cite the source and its date for every status claim.
+Start from ESPN's news blurbs (Rotowire's, via ESPN):
+- A risk's `news` is the flagged player's latest blurb. For a questionable or 0-projection starter without a risk, or a bench player you'd start, call `get_player_news` with all their names in one call.
+- Quote the blurb's gist and its `published` date. It usually says what you'd otherwise guess at: the injury, practice participation (DNP, limited, full), a benching or a role change.
+
+Web-search only when the blurb isn't enough:
+- it's older than the latest practice report (Wednesday to Friday) or than inactives on game day;
+- his game is close and nothing confirms his status;
+- or you need what blurbs don't cover: the team's injury report or a beat reporter's word on a close call.
+
+Cite the source and its date for every status claim.
 
 Weigh the news by when it came out:
 - **Tuesday:** injury tags are often left over from last week. Don't act on them yet.
 - **Wednesday to Friday:** practice reports. Friday's game designation (out, doubtful, questionable) is the strongest signal before game day.
 - **Game day:** official inactives come out about 90 minutes before kickoff. That's the final word.
 
-If you have no web search, say so, and use the ESPN tags and projections only, labeled as such.
+If you have no web search, say so, and use the ESPN blurbs, tags and projections only, labeled as such.
 
 ## 4. Set the lineup
 

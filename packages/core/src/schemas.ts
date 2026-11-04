@@ -275,6 +275,20 @@ export const FreeAgent = Player.extend({
 });
 export type FreeAgent = z.infer<typeof FreeAgent>;
 
+/**
+ * A player news blurb from ESPN's fantasy news feed (Rotowire's): injuries,
+ * practice reports, inactives, role changes.
+ */
+export const NewsItem = z.object({
+  /** The news in one sentence. */
+  headline: z.string(),
+  /** What it means for his role or status; null when there's none. */
+  story: z.string().nullable(),
+  /** ISO, UTC. */
+  published: z.string(),
+});
+export type NewsItem = z.infer<typeof NewsItem>;
+
 /** Any player in the league's pool, with who has him. */
 export const PlayerInfo = FreeAgent.extend({
   /** ROSTERED (see `team`), FREE_AGENT (can be added now) or WAIVERS (needs a claim). */
@@ -288,6 +302,8 @@ export const PlayerInfo = FreeAgent.extend({
       isMine: z.boolean(),
     })
     .nullable(),
+  /** His latest news blurb. Missing when ESPN has none or the news feed didn't answer. */
+  news: NewsItem.optional(),
 });
 export type PlayerInfo = z.infer<typeof PlayerInfo>;
 
@@ -305,6 +321,32 @@ export const PlayerSearch = z.object({
 });
 export type PlayerSearch = z.infer<typeof PlayerSearch>;
 
+/** Recent news for players looked up by name. */
+export const PlayerNews = z.object({
+  league: z.string(),
+  players: z.array(
+    FreeAgent.pick({
+      id: true,
+      name: true,
+      position: true,
+      proTeam: true,
+      injuryStatus: true,
+      lastNewsDate: true,
+    }).extend({
+      /** The name as asked. */
+      query: z.string(),
+      /** Other players the name matched. Above 0, it was ambiguous and the most rostered was used. */
+      otherMatches: z.number().int(),
+      /** Newest first; empty when ESPN has no recent news on him. */
+      news: z.array(NewsItem),
+    }),
+  ),
+  /** Names that matched no player. */
+  notFound: z.array(z.string()),
+  asOf: z.string(),
+});
+export type PlayerNews = z.infer<typeof PlayerNews>;
+
 export const LineupPlayer = Player.pick({
   id: true,
   name: true,
@@ -321,7 +363,7 @@ export const LineupPlayer = Player.pick({
 });
 export type LineupPlayer = z.infer<typeof LineupPlayer>;
 
-/** The highest-projected legal lineup. Mechanical: no news, no judgment. */
+/** The highest-projected legal lineup. Mechanical, no judgment; risks carry the player's latest news. */
 export const OptimalLineup = z.object({
   league: z.string(),
   week: z.number().int(),
@@ -382,6 +424,11 @@ export const OptimalLineup = z.object({
       drop: z.object({ player: z.string(), reason: z.string() }).optional(),
       /** GAME_TIME: the injury tag may be out of date. */
       staleTag: z.object({ lastNews: z.string(), reason: z.string() }).optional(),
+      /**
+       * For a risk about a player: his latest news blurb, which usually says why
+       * (injury, practice, benching). Missing when ESPN has none or the feed didn't answer.
+       */
+      news: NewsItem.optional(),
     }),
   ),
   asOf: z.string(),

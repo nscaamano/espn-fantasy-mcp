@@ -239,3 +239,18 @@ export interface RawProTeam {
 export interface RawProSchedule {
   settings?: { proTeams?: RawProTeam[] };
 }
+
+/** site.api.espn.com's fantasy news feed for one player. */
+export interface RawNewsItem {
+  /** "Rotowire" for player blurbs; "Story" (and others) for ESPN articles. */
+  type?: string;
+  headline?: string;
+  story?: string;
+  /** ISO, UTC. */
+  published?: string;
+  playerId?: number;
+}
+
+export interface RawNewsFeed {
+  feed?: RawNewsItem[];
+}

@@ -224,3 +224,14 @@ export interface EspnProTeam {
   /** Scoring period (NFL week) → that week's game. Missing on the bye. */
   games: Record<number, EspnProGame>;
 }
+
+/** A short player news blurb (Rotowire's, as ESPN's fantasy news feed carries it). */
+export interface EspnNewsItem {
+  playerId: number;
+  /** The news itself, in one sentence. */
+  headline: string;
+  /** Context: what it means for his role or status. */
+  story: string | null;
+  /** ISO, UTC. */
+  published: string;
+}

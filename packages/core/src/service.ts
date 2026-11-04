@@ -2,7 +2,11 @@
 // a thin layer over this class. No lineup or waiver opinions here: those belong
 // in the skills.
 
-import { EspnClient, type EspnLeagueSettings } from "@nscaamano/espn-fantasy-client";
+import {
+  EspnClient,
+  type EspnLeagueSettings,
+  type EspnNewsItem,
+} from "@nscaamano/espn-fantasy-client";
 import { z } from "zod";
 import {
   findConfigPath,
@@ -31,7 +35,9 @@ import {
   League,
   LeagueSettings,
   Matchup,
+  NewsItem,
   PendingClaim,
+  PlayerNews,
   PlayerSearch,
   Roster,
   RuleKey,
@@ -54,7 +60,20 @@ export interface FantasyServiceOptions {
   now?: () => Date;
 }
 
+/** News items cached per player: enough for get_player_news's largest `limit`. */
+const NEWS_DEPTH = 5;
+/** get_player attaches news to at most this many of its matches. */
+const NEWS_FOR_MATCHES = 5;
+
+const toNewsItem = (n: EspnNewsItem): NewsItem => ({
+  headline: n.headline,
+  story: n.story,
+  published: n.published,
+});
+
 export class FantasyService {
+  /** Per player id; same lifetime as settings. */
+  private readonly newsCache = new Map<number, { at: number; value: Promise<EspnNewsItem[]> }>();
   private readonly settingsCache = new Map<
     string,
     { at: number; value: Promise<EspnLeagueSettings> }
@@ -176,6 +195,17 @@ export class FantasyService {
           return [slot, fas?.filter((f) => !claimed.has(f.name)).slice(0, 3) ?? null] as const;
         }),
       ),
+    );
+    // Each risk about a player carries his latest news, which usually says why.
+    const ids = new Map(
+      [...roster.starters, ...roster.bench, ...roster.ir].map((s) => [s.player.name, s.player.id]),
+    );
+    await Promise.all(
+      lineup.risks.map(async (risk) => {
+        const id = risk.player === null ? undefined : ids.get(risk.player);
+        const news = id === undefined ? undefined : await this.latestNews(id);
+        if (news) risk.news = news;
+      }),
     );
     for (const risk of holes) {
       const fas = options.get(risk.slot);
@@ -308,8 +338,8 @@ export class FantasyService {
     const players = found.slice(0, limit);
     // Slots come from each owning team's roster; without one, the slot is null.
     const teamIds = [...new Set(players.map((p) => p.onTeamId).filter((id) => id !== null))];
-    const rosters = new Map(
-      await Promise.all(
+    const [rosters, news] = await Promise.all([
+      Promise.all(
         teamIds.map(
           async (id) =>
             [
@@ -317,13 +347,14 @@ export class FantasyService {
               await this.client.getRoster(cfg.leagueId, cfg.year, id, w).catch(() => null),
             ] as const,
         ),
-      ),
-    );
+      ).then((entries) => new Map(entries)),
+      Promise.all(players.slice(0, NEWS_FOR_MATCHES).map((p) => this.latestNews(p.player.id))),
+    ]);
     return PlayerSearch.parse({
       league: cfg.alias,
       query: name,
       week: w,
-      players: players.map((p) => {
+      players: players.map((p, i) => {
         const team =
           p.onTeamId === null
             ? null
@@ -335,9 +366,55 @@ export class FantasyService {
                   null,
                 isMine: p.onTeamId === cfg.myTeamId,
               };
-        return toPlayerInfo(p, schedule, w, team);
+        const latest = news[i];
+        return { ...toPlayerInfo(p, schedule, w, team), ...(latest ? { news: latest } : {}) };
       }),
       totalMatches: found.length,
+      asOf: this.now().toISOString(),
+    });
+  }
+
+  /**
+   * Recent news blurbs for players named in one league (injuries, practice
+   * reports, inactives, role changes), up to `limit` each, newest first. Each
+   * name resolves like getPlayer: an exact match, else the most rostered player
+   * whose name starts that way.
+   */
+  async getPlayerNews(league: string, names: string[], limit = 3): Promise<PlayerNews> {
+    const cfg = findLeague(this.config, league);
+    const [settings, schedule] = await Promise.all([
+      this.espnSettings(cfg),
+      this.proSchedule(cfg.year),
+    ]);
+    const w = settings.currentWeek;
+    const queries = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+    const found = await Promise.all(
+      queries.map(async (query) => {
+        const matches = await this.client.searchPlayers(cfg.leagueId, cfg.year, query, w);
+        const top = matches[0];
+        if (!top) return { query, player: null };
+        const info = toPlayerInfo(top, schedule, w, null);
+        const news = await this.news(top.player.id);
+        return {
+          query,
+          player: {
+            id: info.id,
+            name: info.name,
+            position: info.position,
+            proTeam: info.proTeam,
+            injuryStatus: info.injuryStatus,
+            lastNewsDate: info.lastNewsDate,
+            query,
+            otherMatches: matches.length - 1,
+            news: news.slice(0, limit).map(toNewsItem),
+          },
+        };
+      }),
+    );
+    return PlayerNews.parse({
+      league: cfg.alias,
+      players: found.flatMap((f) => (f.player ? [f.player] : [])),
+      notFound: found.filter((f) => !f.player).map((f) => f.query),
       asOf: this.now().toISOString(),
     });
   }
@@ -430,6 +507,23 @@ export class FantasyService {
     value.catch(() => this.settingsCache.delete(key));
     this.settingsCache.set(key, { at, value });
     return value;
+  }
+
+  /** A player's latest news, cached briefly so one lineup's risks share a fetch. */
+  private news(playerId: number): Promise<EspnNewsItem[]> {
+    const hit = this.newsCache.get(playerId);
+    const at = this.now().getTime();
+    if (hit && at - hit.at < this.settingsTtlMs) return hit.value;
+    const value = this.client.getPlayerNews(playerId, NEWS_DEPTH);
+    value.catch(() => this.newsCache.delete(playerId));
+    this.newsCache.set(playerId, { at, value });
+    return value;
+  }
+
+  /** His newest blurb; undefined when there's none or the feed fails (news is a bonus). */
+  private async latestNews(playerId: number): Promise<NewsItem | undefined> {
+    const [first] = await this.news(playerId).catch(() => []);
+    return first && toNewsItem(first);
   }
 
   private async proSchedule(year: number): Promise<ProSchedule> {

@@ -12,6 +12,7 @@ import {
   Matchup,
   OptimalLineup,
   PendingClaim,
+  PlayerNews,
   PlayerSearch,
   WaiverResults,
   Roster,
@@ -32,7 +33,7 @@ const { version } = JSON.parse(
 
 export const POSITIONS = ["QB", "RB", "WR", "TE", "FLEX", "OP", "D/ST", "K"] as const;
 
-const INSTRUCTIONS = `Read-only access to the user's ESPN fantasy football leagues. Start with list_leagues for the league aliases. Leagues can have different rules (PPR vs half-PPR, FAAB vs priority waivers, superflex), so call get_league_settings before advising on a league, and never carry one league's rules over to another. If its missingRules or conflicts are non-empty, ask the user and save the answer with set_league_rule. Before recommending waiver claims, call get_pending_claims to see what the user already has queued, so you don't repeat a claim or plan a drop that's already committed. For a named player ("who has X", "is X available", "how's X doing"), use get_player rather than scanning rosters. This server can't make moves: recommend lineup changes, claims, bids and drops for the user to make in the ESPN app.`;
+const INSTRUCTIONS = `Read-only access to the user's ESPN fantasy football leagues. Start with list_leagues for the league aliases. Leagues can have different rules (PPR vs half-PPR, FAAB vs priority waivers, superflex), so call get_league_settings before advising on a league, and never carry one league's rules over to another. If its missingRules or conflicts are non-empty, ask the user and save the answer with set_league_rule. Before recommending waiver claims, call get_pending_claims to see what the user already has queued, so you don't repeat a claim or plan a drop that's already committed. For a named player ("who has X", "is X available", "how's X doing"), use get_player rather than scanning rosters. Lineup risks and get_player results carry the player's latest ESPN news blurb (\`news\`); for anyone else, or more history, call get_player_news before searching the web. This server can't make moves: recommend lineup changes, claims, bids and drops for the user to make in the ESPN app.`;
 
 const league = z
   .string()
@@ -119,7 +120,7 @@ export function createServer(
     {
       title: "Best lineup by projection",
       description:
-        "The user's highest-projected legal lineup for a week in one league, computed from the league's starting slots and each player's eligible slots. Players on a bye or OUT, IR or SUSPENDED don't start. Locked players (game started) stay where they are, and IR slots are left alone. A player projecting 0 doesn't start: if he's the best option, the slot stays empty and the EMPTY_SLOT risk names him. The user's pending waiver claims are accounted for: players a claim drops leave the pool. Returns `starters`, the `moves` to get there (`to: \"BE\"` means bench; every move has a `reason`: why a starter sits, or whom an incoming player replaces), projected totals before and after, and `risks`. GAME_TIME: a QUESTIONABLE or DOUBTFUL starter, with any bench backups whose games start after his inactives come out, about 90 minutes before his kickoff (pivots: a 4:05 PM backup counts for a 4:25 PM starter); `staleTag` is set when his latest news predates this week's practice reports. EMPTY_SLOT: nobody healthy with a projection can fill it; `pendingClaim` is set when a queued claim would fill it, otherwise `freeAgents` lists the top options (a WAIVERS player must be claimed by `waiverClears`; a free agent can be added until `kickoff`). IR_INELIGIBLE: a player in an IR slot whose status the league doesn't allow on IR (default: only OUT, IR or SUSPENDED; see the `roster.irEligibleStatuses` rule), which blocks all adds and claims until he moves to the bench. When the roster is full, EMPTY_SLOT and IR_INELIGIBLE risks also carry `drop`: a droppable bench player with the lowest season projection. NO_PROJECTION is no longer emitted. It knows nothing about the news: check flagged players before acting, and don't churn over a point or two.",
+        "The user's highest-projected legal lineup for a week in one league, computed from the league's starting slots and each player's eligible slots. Players on a bye or OUT, IR or SUSPENDED don't start. Locked players (game started) stay where they are, and IR slots are left alone. A player projecting 0 doesn't start: if he's the best option, the slot stays empty and the EMPTY_SLOT risk names him. The user's pending waiver claims are accounted for: players a claim drops leave the pool. Returns `starters`, the `moves` to get there (`to: \"BE\"` means bench; every move has a `reason`: why a starter sits, or whom an incoming player replaces), projected totals before and after, and `risks`. GAME_TIME: a QUESTIONABLE or DOUBTFUL starter, with any bench backups whose games start after his inactives come out, about 90 minutes before his kickoff (pivots: a 4:05 PM backup counts for a 4:25 PM starter); `staleTag` is set when his latest news predates this week's practice reports. EMPTY_SLOT: nobody healthy with a projection can fill it; `pendingClaim` is set when a queued claim would fill it, otherwise `freeAgents` lists the top options (a WAIVERS player must be claimed by `waiverClears`; a free agent can be added until `kickoff`). IR_INELIGIBLE: a player in an IR slot whose status the league doesn't allow on IR (default: only OUT, IR or SUSPENDED; see the `roster.irEligibleStatuses` rule), which blocks all adds and claims until he moves to the bench. When the roster is full, EMPTY_SLOT and IR_INELIGIBLE risks also carry `drop`: a droppable bench player with the lowest season projection. NO_PROJECTION is no longer emitted. Each risk about a player carries `news`: his latest ESPN news blurb (headline, story, published), which usually says why he's flagged. If it predates the latest practice report or inactives, or his game is close, look for newer news before acting. Don't churn over a point or two.",
       inputSchema: z.object({ league, week }),
       outputSchema: OptimalLineup,
       annotations: READ,
@@ -186,7 +187,7 @@ export function createServer(
     "get_player",
     {
       title: "Look up a player",
-      description: `Find any player in a league by name, whoever has him: \`status\` is ROSTERED (\`team\` gives the team, his lineup slot there such as QB, FLEX, BE or IR, and \`isMine\` for the user's team), FREE_AGENT (can be added now) or WAIVERS (needs a claim; he clears at \`waiverClears\`). Each player also has position, NFL team, injury status, bye week, this week's game, projected and actual points for the week, season points and projection, % rostered and its recent change, and positional rank. Use it for "who has X", "how is X doing", or to check a player before a trade or claim, including one too little rostered to appear in get_free_agents. Partial names work ("Vidal", "St. Brown") and punctuation is optional ("AJ Brown"). If any players match the name exactly, only they are returned (two players can share a name); otherwise every player whose first or last name starts that way, most rostered first. An empty \`players\` list means no match: check the spelling. When \`totalMatches\` is more than \`players\`, the name was ambiguous: ask which one, or retry with the full name. ${FRESHNESS}`,
+      description: `Find any player in a league by name, whoever has him: \`status\` is ROSTERED (\`team\` gives the team, his lineup slot there such as QB, FLEX, BE or IR, and \`isMine\` for the user's team), FREE_AGENT (can be added now) or WAIVERS (needs a claim; he clears at \`waiverClears\`). Each player also has position, NFL team, injury status, bye week, this week's game, projected and actual points for the week, season points and projection, % rostered and its recent change, and positional rank, plus \`news\`: his latest ESPN news blurb, when there is one. Use it for "who has X", "how is X doing", or to check a player before a trade or claim, including one too little rostered to appear in get_free_agents. Partial names work ("Vidal", "St. Brown") and punctuation is optional ("AJ Brown"). If any players match the name exactly, only they are returned (two players can share a name); otherwise every player whose first or last name starts that way, most rostered first. An empty \`players\` list means no match: check the spelling. When \`totalMatches\` is more than \`players\`, the name was ambiguous: ask which one, or retry with the full name. ${FRESHNESS}`,
       inputSchema: z.object({
         league,
         name: z
@@ -208,6 +209,33 @@ export function createServer(
     },
     async (args) =>
       result(await service().getPlayer(args.league, args.name, args.limit, args.week)),
+  );
+
+  server.registerTool(
+    "get_player_news",
+    {
+      title: "Player news",
+      description:
+        "Recent news blurbs for players named in one league, newest first (Rotowire's, via ESPN's fantasy news feed): injuries and how serious they are, practice participation, inactives, benchings and role changes. Use it to learn why a player's status or projection changed, or to vet a trade target or a pickup. Lineup risks from get_optimal_lineup and players from get_player already carry their latest blurb as `news`; call this for anyone else or for more history. Names resolve like get_player: an exact match, else the most rostered player whose name starts that way. `otherMatches` above 0 means the name was ambiguous (retry with the full name if the player is wrong), and `notFound` lists names that matched no one. Blurbs can trail breaking news, so close to kickoff compare `published` with the latest reports.",
+      inputSchema: z.object({
+        league,
+        names: z
+          .array(z.string().trim().min(2))
+          .min(1)
+          .max(10)
+          .describe('Player names, full or partial, e.g. ["A.J. Brown", "Vidal"] (1–10).'),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(5)
+          .default(3)
+          .describe("Blurbs per player, newest first (1–5, default 3)."),
+      }),
+      outputSchema: PlayerNews,
+      annotations: READ,
+    },
+    async (args) => result(await service().getPlayerNews(args.league, args.names, args.limit)),
   );
 
   server.registerTool(
