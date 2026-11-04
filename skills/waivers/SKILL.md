@@ -22,7 +22,8 @@ Use the league the user named, or every league from `list_leagues`. For each one
 2. **`get_my_roster`** for the current week. On waiver day, ESPN's current week is already the upcoming one.
 3. **`get_pending_claims`.** What the user has already queued: don't repeat a claim or reuse a drop by accident.
    After a waiver run (usually Wednesday morning), **`get_waiver_results`** shows which claims won and which lost, to whom and for how much. Start from the lost ones: those holes are still open.
-4. **`get_recent_activity`.** The prices in this league. Winning FAAB bids show what managers here pay. It also shows who just dropped whom.
+4. **`get_faab_prices`** (FAAB leagues, one call per league). What managers in this league actually pay, by position, over the last five weeks: median, low and high winning bids, how many claims were contested, and the top bids with the runner-up's losing bid. Prices differ a lot between leagues and positions (in superflex, QBs go far higher). Pass `weeks: 18` for the whole season when recent weeks are thin. In a priority league it returns counts only; skip it there.
+5. **`get_recent_activity`.** Who just dropped whom, and the latest adds.
 
 ## 2. Find the holes
 
@@ -65,7 +66,8 @@ ESPN's projections and % rostered are inputs from one model and from the crowd. 
   - the remaining budget;
   - how much he matters to the lineup;
   - how scarce the position is;
-  - what similar players went for in this league (`get_recent_activity`).
+  - what this league pays at his position (`get_faab_prices`). Anchor on the position's median and on comparable players in its `bids`. For a player several teams will want, `runnerUp` shows what it took to win a contested claim: beat that, not just the median.
+- Read the prices with care: a few claims per position is a small sample, a winning bid is what one manager paid rather than what was needed (an uncontested $20 win could have been $1), and a breakout bid (the top `max`) isn't the going rate.
 - Don't bid big on a speculative add (single-digit % rostered). The minimum bid, or $0 where `minimumBid` is 0, is often enough.
 - Save budget for real breakouts, such as the new lead back after a starter's season-ending injury. Those deserve a large share of what's left.
 - Budget is worth nothing after the season, so spend more freely as the playoffs near.
@@ -97,7 +99,7 @@ Give one block per league, with times in the user's time zone (Eastern if unknow
 Already queued: X ($5), dropping Y.
 Holes: RB2 (Z on bye in week 8), QB depth (W on bye in week 10).
 Claims, in this order:
-1. Add A (RB, HOU), bid $14, drop B. Starting job after C's injury (source, date).
+1. Add A (RB, HOU), bid $14, drop B. Starting job after C's injury (source, date). RBs here: median $10, contested ones $18–30.
 2. Add D (QB, NO), bid $3, drop E. Covers the week 10 bye.
 Add now (free agent): F (K) for G.
 Passed on: H. Hyped, but 2% rostered and no role yet.

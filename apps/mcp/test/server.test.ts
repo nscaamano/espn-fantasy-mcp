@@ -43,6 +43,7 @@ describe("MCP server", () => {
     const { client } = await connect();
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
+      "get_faab_prices",
       "get_free_agents",
       "get_league_settings",
       "get_matchup",
@@ -194,6 +195,22 @@ describe("MCP server", () => {
     const out = res.structuredContent as { processedAt: string; claims: { result: string }[] };
     expect(out.processedAt).toBe("2026-10-28T07:20:36.575Z");
     expect(out.claims.map((c) => c.result)).toEqual(["WON", "LOST", "FAILED", "CANCELED"]);
+  });
+
+  it("returns FAAB prices by position, counts only in a priority league", async () => {
+    const { call } = await connect(2);
+    const res = await call("get_faab_prices", { league: "test", weeks: 2, position: "RB" });
+    expect(res.isError).toBeFalsy();
+    expect(res.structuredContent).toMatchObject({
+      league: "test",
+      usesFaab: false,
+      fromWeek: 15,
+      toWeek: 16,
+      all: { wins: 1, median: null },
+      positions: [{ position: "RB", wins: 1, bids: [] }],
+    });
+    const bad = await call("get_faab_prices", { league: "test", position: "FLEX" });
+    expect(bad.isError).toBe(true);
   });
 
   it("rejects an unknown position before calling ESPN", async () => {

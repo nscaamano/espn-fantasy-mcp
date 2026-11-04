@@ -521,3 +521,57 @@ export const WaiverResults = z.object({
   asOf: z.string(),
 });
 export type WaiverResults = z.infer<typeof WaiverResults>;
+
+/** One winning waiver claim, as a price point. */
+export const FaabBid = z.object({
+  player: z.string(),
+  proTeam: z.string().nullable(),
+  /** The scoring period whose log has the waiver run it won in. */
+  week: z.number().int(),
+  bid: z.number(),
+  /** The highest bid another team lost with in the same run; null if nobody else bid. */
+  runnerUp: z.number().nullable(),
+  /** Teams that bid on him in that run, the winner included (1 = uncontested). */
+  bidders: z.number().int(),
+  /** The winning team. */
+  team: z.string(),
+});
+export type FaabBid = z.infer<typeof FaabBid>;
+
+/** Winning waiver claims over the weeks covered. Bid figures are null in priority leagues. */
+export const FaabStats = z.object({
+  wins: z.number().int(),
+  /** Wins where another team also bid on the player. */
+  contested: z.number().int(),
+  median: z.number().nullable(),
+  min: z.number().nullable(),
+  max: z.number().nullable(),
+});
+export type FaabStats = z.infer<typeof FaabStats>;
+
+export const PositionPrices = z.object({
+  position: z.string(),
+  ...FaabStats.shape,
+  /** The highest winning bids (empty in priority leagues). */
+  bids: z.array(FaabBid),
+});
+export type PositionPrices = z.infer<typeof PositionPrices>;
+
+/** What winning waiver claims cost in one league, by position, over recent weeks. */
+export const FaabPrices = z.object({
+  league: z.string(),
+  /** False in priority-waiver leagues: no bids, so counts only. */
+  usesFaab: z.boolean(),
+  /** Each team's season budget, and the smallest bid allowed (null without FAAB). */
+  budget: z.number().nullable(),
+  minimumBid: z.number().nullable(),
+  fromWeek: z.number().int(),
+  toWeek: z.number().int(),
+  /** Every position together. */
+  all: FaabStats,
+  /** In QB, RB, WR, TE, K, D/ST order; positions without a winning claim are left out. */
+  positions: z.array(PositionPrices),
+  /** When this was read from ESPN (ISO, UTC). */
+  asOf: z.string(),
+});
+export type FaabPrices = z.infer<typeof FaabPrices>;

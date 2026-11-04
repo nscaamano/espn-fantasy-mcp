@@ -119,6 +119,7 @@ All tools are read-only toward ESPN. `league` accepts an alias from `leagues.jso
 | `get_recent_activity` | league, limit? | recent adds, drops, waiver results with bids, trades |
 | `get_pending_claims` | league | my queued claims: add, drop (and the slot it leaves), bid (null in priority leagues), submitted and processing times. ESPN exposes no claim order |
 | `get_waiver_results` | league, week? | my claims in the week's latest waiver run (`mTransactions2`): WON, LOST (winning team and bid), FAILED (reason) or CANCELED; `processedAt`; my `waiverRank` now |
+| `get_faab_prices` | league, weeks?, position? | every team's winning waiver bids by position over the last `weeks` scoring periods (default 5, the current one included; up to 18): `wins`, `contested`, median, min, max, and the top bids (5 per position, 15 for one position) with `runnerUp` (another team's highest losing bid in the same run, a `FAILED_INVALIDPLAYERSOURCE` PROCESS record, which keeps its bid) and `bidders`. Plus an `all` line, `budget` and `minimumBid`. One `mTransactions2` request per week; past weeks are cached for good. Free-agent adds aren't bids; claims that failed for other reasons (roster limit) aren't competition. Priority leagues (`usesFaab: false`) get counts only. Aggregation is pure, in `core/src/faab.ts` |
 | `set_league_rule` | league, rule, value, source | persist a rule confirmed by upload or answer (writes `leagues.json` only) |
 
 - **Output:** compact JSON, never ESPN's raw payload, so each call costs few tokens. List results are wrapped in an object (`{ leagues }`, `{ freeAgents }`, `{ transactions }`), since MCP structured output must be an object.
@@ -179,7 +180,7 @@ They hold the judgment; the MCP tools only fetch data. Output is a short per-lea
 
 1. Find each roster's holes: injuries, byes next week, dead bench spots.
 2. `get_free_agents` for the positions that matter; rank by fit, not just projection.
-3. FAAB leagues: suggest a bid from budget left, % rostered and need. Priority-waiver leagues: suggest a claim order.
+3. FAAB leagues: suggest a bid from budget left, % rostered, need and what this league has paid at the position (`get_faab_prices`). Priority-waiver leagues: suggest a claim order.
 4. Name a specific drop for every claim.
 
 **Rules of thumb** (bake into both skills):

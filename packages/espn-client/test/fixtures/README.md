@@ -32,6 +32,11 @@ log. It holds the latest run (team 2 wins one claim, loses one to team 5's $40
 bid, and has one fail for another reason), the resolved proposals, a
 cancellation (which records $0; its proposal has the bid), a claim queued after the run, and a run from the day before.
 Player 3045147 matches `player_card.json`; the rest are placeholder ids.
+Team 7's $26 claim on the player team 5 won is the runner-up bid (live, an
+outbid claim fails with `FAILED_INVALIDPLAYERSOURCE` and keeps its bid).
+`fixtureFetch` serves this log for every scoring period, so a multi-week read
+sees the same records each week; the FAAB price tests rely on that to check
+they're counted once.
 
 `player_search.json` is made up, in the live shape of a name search: players of
 every status, each with `onTeamId` (0 for none) and, on waivers,

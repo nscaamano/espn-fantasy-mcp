@@ -5,6 +5,7 @@
 
 import { readFileSync } from "node:fs";
 import {
+  FaabPrices,
   FreeAgent,
   FreeAgentSort,
   League,
@@ -339,6 +340,34 @@ export function createServer(
       annotations: READ,
     },
     async (args) => result(await service().getWaiverResults(args.league, args.week)),
+  );
+
+  server.registerTool(
+    "get_faab_prices",
+    {
+      title: "FAAB prices by position",
+      description:
+        "What winning waiver claims cost in one league, every team's, by position (QB, RB, WR, TE, K, D/ST), over recent weeks: the number of wins, how many were `contested` (another team bid too), and the median, lowest and highest winning bid, plus the highest bids (5 per position, 15 with `position`), each with the player, week, winning team, `runnerUp` (the highest bid another team lost with, null if nobody else bid) and `bidders` (teams that bid, the winner included). `all` sums every position. `budget` and `minimumBid` put the numbers in scale. Use it to size FAAB bids from what this league actually pays: prices differ a lot between leagues and positions (QBs cost far more in superflex). Caveats: samples are small (a few claims per position), a winning bid shows what one manager paid, not what was needed (`runnerUp` is closer to that), and free-agent adds aren't bids, so they're not counted. In a priority-waiver league `usesFaab` is false: there are no bids, so only the counts are returned. Covers the current week and the ones before it (`fromWeek` to `toWeek`).",
+      inputSchema: z.object({
+        league,
+        weeks: z
+          .number()
+          .int()
+          .min(1)
+          .max(18)
+          .default(5)
+          .describe(
+            "How many weeks to cover, ending with the current one (1–18, default 5). Use more for a season view; each week is one more ESPN request the first time.",
+          ),
+        position: z
+          .enum(["QB", "RB", "WR", "TE", "K", "D/ST"])
+          .optional()
+          .describe("Only this position, with up to 15 bids listed. Omit for every position."),
+      }),
+      outputSchema: FaabPrices,
+      annotations: READ,
+    },
+    async (args) => result(await service().getFaabPrices(args.league, args.weeks, args.position)),
   );
 
   server.registerTool(

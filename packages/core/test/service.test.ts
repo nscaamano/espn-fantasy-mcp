@@ -292,6 +292,101 @@ describe("FantasyService.getWaiverResults", () => {
   });
 });
 
+describe("FantasyService.getFaabPrices", () => {
+  /** The fixtures as a FAAB league, with a card (a QB) for the player team 5 won. */
+  const faabLeague = () => {
+    const { fetch, calls } = fixtureFetch();
+    const wrapped: typeof fetch = async (input, init) => {
+      const res = await fetch(input, init);
+      const views = new URL(String(input)).searchParams.getAll("view");
+      if (views.includes("mSettings")) {
+        const body = (await res.json()) as {
+          settings: { acquisitionSettings: { isUsingAcquisitionBudget: boolean } };
+        };
+        body.settings.acquisitionSettings.isUsingAcquisitionBudget = true;
+        return new Response(JSON.stringify(body), { status: 200 });
+      }
+      if (views.includes("kona_playercard")) {
+        const body = (await res.json()) as { players: unknown[] };
+        body.players.push({
+          id: 101,
+          player: { id: 101, fullName: "Sample Passer", defaultPositionId: 1, proTeamId: 1 },
+        });
+        return new Response(JSON.stringify(body), { status: 200 });
+      }
+      return res;
+    };
+    const svc = new FantasyService(new EspnClient({ fetch: wrapped }), config(2));
+    const logRequests = () =>
+      calls.filter((c) => c.url.searchParams.getAll("view").includes("mTransactions2"));
+    return { svc, logRequests };
+  };
+
+  it("prices winning bids by position over the last five weeks, with the runner-up", async () => {
+    const { svc, logRequests } = faabLeague();
+    const prices = await svc.getFaabPrices("test");
+    // The fixture league is in week 16; every week serves the same log, counted once.
+    expect(logRequests().map((c) => c.url.searchParams.get("scoringPeriodId"))).toEqual([
+      "12",
+      "13",
+      "14",
+      "15",
+      "16",
+    ]);
+    expect(prices).toMatchObject({
+      league: "test",
+      usesFaab: true,
+      budget: 100,
+      minimumBid: 1,
+      fromWeek: 12,
+      toWeek: 16,
+      // Player 105's card is missing, so his win has no position and isn't counted.
+      all: { wins: 2, contested: 1, median: 22.5, min: 5, max: 40 },
+    });
+    expect(prices.positions.map((p) => [p.position, p.wins, p.median])).toEqual([
+      ["QB", 1, 40],
+      ["RB", 1, 5],
+    ]);
+    expect(prices.positions[0]!.bids).toEqual([
+      {
+        player: "Sample Passer",
+        proTeam: "ATL",
+        week: 12,
+        bid: 40,
+        runnerUp: 26,
+        bidders: 3,
+        team: "Watch What You Saquon",
+      },
+    ]);
+  });
+
+  it("caches past weeks' logs and refetches only the current week", async () => {
+    const { svc, logRequests } = faabLeague();
+    await svc.getFaabPrices("test", 3);
+    await svc.getFaabPrices("test", 3);
+    expect(logRequests().map((c) => c.url.searchParams.get("scoringPeriodId"))).toEqual([
+      "14",
+      "15",
+      "16",
+      "16",
+    ]);
+    // weeks is clamped to the season's start.
+    await expect(svc.getFaabPrices("test", 18, "RB")).resolves.toMatchObject({
+      fromWeek: 1,
+      positions: [{ position: "RB", wins: 1 }],
+    });
+  });
+
+  it("gives counts without bids in a priority league", async () => {
+    const prices = await service(2).svc.getFaabPrices("test", 1);
+    expect(prices).toMatchObject({ usesFaab: false, budget: null, minimumBid: null });
+    expect(prices.all).toEqual({ wins: 1, contested: 0, median: null, min: null, max: null });
+    expect(prices.positions).toEqual([
+      { position: "RB", wins: 1, contested: 0, median: null, min: null, max: null, bids: [] },
+    ]);
+  });
+});
+
 describe("FantasyService.getPendingClaims", () => {
   it("returns my queued claims with ISO times and no bid in a priority league", async () => {
     const claims = await service(1).svc.getPendingClaims("test");

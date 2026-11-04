@@ -321,7 +321,7 @@ export function toPendingClaim(c: EspnPendingClaim, usesFaab: boolean): PendingC
 }
 
 /** Claims ESPN processed within this long of a run's latest one belong to that run. */
-const RUN_WINDOW_MS = 60 * 60 * 1000;
+export const RUN_WINDOW_MS = 60 * 60 * 1000;
 const RESULT_ORDER: Record<ClaimResult["result"], number> = {
   WON: 0,
   LOST: 1,

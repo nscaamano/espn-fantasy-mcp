@@ -6,6 +6,7 @@ import {
   EspnClient,
   type EspnLeagueSettings,
   type EspnNewsItem,
+  type EspnTransaction,
 } from "@nscaamano/espn-fantasy-client";
 import { z } from "zod";
 import {
@@ -28,9 +29,11 @@ import {
   toWaiverResults,
   type ProSchedule,
 } from "./map.js";
+import { faabPrices, winningClaims, type WeekLog } from "./faab.js";
 import { DEFAULT_IR_ELIGIBLE, optimizeLineup } from "./lineup.js";
 import { applyRules } from "./rules.js";
 import {
+  FaabPrices,
   FreeAgent,
   League,
   LeagueSettings,
@@ -65,6 +68,14 @@ const NEWS_DEPTH = 5;
 /** get_player attaches news to at most this many of its matches. */
 const NEWS_FOR_MATCHES = 5;
 
+/** Weeks getFaabPrices covers by default: the current one and the four before it. */
+const FAAB_WEEKS = 5;
+/** Bids listed per position, or for a single position when one is asked for. */
+const FAAB_BIDS = 5;
+const FAAB_BIDS_ONE_POSITION = 15;
+/** Transaction logs fetched at once. */
+const LOG_CONCURRENCY = 4;
+
 const toNewsItem = (n: EspnNewsItem): NewsItem => ({
   headline: n.headline,
   story: n.story,
@@ -74,6 +85,8 @@ const toNewsItem = (n: EspnNewsItem): NewsItem => ({
 export class FantasyService {
   /** Per player id; same lifetime as settings. */
   private readonly newsCache = new Map<number, { at: number; value: Promise<EspnNewsItem[]> }>();
+  /** Past weeks' transaction logs, by league, year and week: they don't change. */
+  private readonly logCache = new Map<string, Promise<EspnTransaction[]>>();
   private readonly settingsCache = new Map<
     string,
     { at: number; value: Promise<EspnLeagueSettings> }
@@ -470,6 +483,50 @@ export class FantasyService {
   }
 
   /**
+   * What winning waiver claims cost in this league: every team's, by position,
+   * over the last `weeks` scoring periods up to the current one, with the
+   * runner-up bid where another team lost. One transaction-log request per
+   * week; past weeks are cached. Priority leagues get counts without bids.
+   */
+  async getFaabPrices(league: string, weeks = FAAB_WEEKS, position?: string): Promise<FaabPrices> {
+    const cfg = findLeague(this.config, league);
+    const [raw, settings] = await Promise.all([
+      this.espnSettings(cfg),
+      this.getLeagueSettings(league),
+    ]);
+    const toWeek = settings.currentWeek;
+    const fromWeek = Math.max(1, toWeek - Math.max(1, weeks) + 1);
+    const logs: WeekLog[] = [];
+    for (let start = fromWeek; start <= toWeek; start += LOG_CONCURRENCY) {
+      const batch = Array.from(
+        { length: Math.min(LOG_CONCURRENCY, toWeek - start + 1) },
+        (_, i) => start + i,
+      );
+      logs.push(
+        ...(await Promise.all(
+          batch.map(async (week) => ({ week, transactions: await this.log(cfg, week, toWeek) })),
+        )),
+      );
+    }
+    const usesFaab = raw.acquisition.usesFaab;
+    return FaabPrices.parse({
+      league: cfg.alias,
+      usesFaab,
+      budget: usesFaab ? settings.waivers.faabBudget : null,
+      minimumBid: usesFaab ? settings.waivers.minimumBid : null,
+      fromWeek,
+      toWeek,
+      ...faabPrices(winningClaims(logs), {
+        usesFaab,
+        position,
+        bidsPerPosition: position ? FAAB_BIDS_ONE_POSITION : FAAB_BIDS,
+        teamName: (id) => this.teamName(raw, id),
+      }),
+      asOf: this.now().toISOString(),
+    });
+  }
+
+  /**
    * Stores a rule the user confirmed (from a settings-page upload or by answering a
    * question). It overrides ESPN's value from then on and is saved to leagues.json.
    */
@@ -507,6 +564,19 @@ export class FantasyService {
     value.catch(() => this.settingsCache.delete(key));
     this.settingsCache.set(key, { at, value });
     return value;
+  }
+
+  /** One week's transaction log. Weeks before `currentWeek` are over, so they're cached for good. */
+  private log(cfg: LeagueConfig, week: number, currentWeek: number): Promise<EspnTransaction[]> {
+    if (week >= currentWeek) return this.client.getTransactions(cfg.leagueId, cfg.year, week);
+    const key = `${cfg.leagueId}:${cfg.year}:${week}`;
+    let hit = this.logCache.get(key);
+    if (!hit) {
+      hit = this.client.getTransactions(cfg.leagueId, cfg.year, week);
+      hit.catch(() => this.logCache.delete(key));
+      this.logCache.set(key, hit);
+    }
+    return hit;
   }
 
   /** A player's latest news, cached briefly so one lineup's risks share a fetch. */
