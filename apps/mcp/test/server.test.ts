@@ -44,6 +44,7 @@ describe("MCP server", () => {
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
       "find_trade_partners",
+      "get_bid_competition",
       "get_bye_coverage",
       "get_faab_prices",
       "get_free_agents",
@@ -214,6 +215,22 @@ describe("MCP server", () => {
       league: "test",
       names: ["A1", "B2"],
       limit: 6,
+    });
+    expect(tooMany.isError).toBe(true);
+  });
+
+  it("sizes up the competition for waiver targets, and rejects too many", async () => {
+    const { call } = await connect();
+    const res = await call("get_bid_competition", { league: "test", players: ["AJ Tester"] });
+    expect(res.isError).toBeFalsy();
+    expect(res.structuredContent).toMatchObject({
+      usesFaab: false,
+      targets: [{ player: { name: "A.J. Tester" }, available: true, suggestedBid: null }],
+      notFound: [],
+    });
+    const tooMany = await call("get_bid_competition", {
+      league: "test",
+      players: ["Aa", "Bb", "Cc", "Dd", "Ee", "Ff"],
     });
     expect(tooMany.isError).toBe(true);
   });

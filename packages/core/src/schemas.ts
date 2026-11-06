@@ -736,3 +736,115 @@ export const TradePartners = z.object({
   asOf: z.string(),
 });
 export type TradePartners = z.infer<typeof TradePartners>;
+
+/** A team's waiver bidding this season: claims that won or were outbid (not other failures). */
+export const BidProfile = z.object({
+  claims: z.number().int(),
+  wins: z.number().int(),
+  /** FAAB spent on winning claims (0 in priority leagues). */
+  spent: z.number(),
+  /** Highest bid, won or lost; null with no claims. */
+  maxBid: z.number().nullable(),
+  claimsAtPosition: z.number().int(),
+  maxBidAtPosition: z.number().nullable(),
+  /** Latest week with a claim; null with none. */
+  lastWeek: z.number().int().nullable(),
+});
+export type BidProfile = z.infer<typeof BidProfile>;
+
+/** What winning claims cost in the wins a target is priced against. */
+export const BidMarket = z.object({
+  /**
+   * SIMILAR: wins on players of similar value now (per game, within 40% of the
+   * target's); else his position (e.g. "RB"); else ALL, every win.
+   */
+  scope: z.string(),
+  wins: z.number().int(),
+  contested: z.number().int(),
+  median: z.number().nullable(),
+  /** 75th percentile of the winning bids. */
+  upperQuartile: z.number().nullable(),
+  /** Median of the wins another team also bid on. */
+  contestedMedian: z.number().nullable(),
+  max: z.number().nullable(),
+  /** The highest losing bid seen: what it took to be second. */
+  topRunnerUp: z.number().nullable(),
+});
+export type BidMarket = z.infer<typeof BidMarket>;
+
+/** The competition for one waiver target. */
+export const BidCompetitionTarget = z.object({
+  /** The name as asked. */
+  query: z.string(),
+  player: PlayerInfo.pick({
+    id: true,
+    name: true,
+    position: true,
+    proTeam: true,
+    injuryStatus: true,
+    byeWeek: true,
+    status: true,
+    seasonProjectedPoints: true,
+    percentRostered: true,
+    percentChange: true,
+    waiverClears: true,
+  }),
+  /** False when he's on a roster: there's nothing to bid on. */
+  available: z.boolean(),
+  /** His rest-of-season projection per game left: the scale `comparables` are matched on. */
+  perGame: z.number().nullable(),
+  /** What he'd add to the user's best lineups over the weeks left, byes counted (season points). */
+  gainForMe: z.number().nullable(),
+  market: BidMarket.nullable(),
+  /** The wins in `market` (closest in value first), or the latest at his position. */
+  comparables: z.array(
+    z.object({
+      player: z.string(),
+      week: z.number().int(),
+      bid: z.number().nullable(),
+      runnerUp: z.number().nullable(),
+      bidders: z.number().int(),
+      team: z.string(),
+      /** That player's per-game value now (null if ESPN didn't return him). */
+      perGame: z.number().nullable(),
+    }),
+  ),
+  /** How many other teams he'd help enough to want him (at least 10% of his projection). */
+  interested: z.number().int(),
+  /** Of those, how many are ahead of the user in waiver priority (null if unknown). */
+  aheadOfMe: z.number().int().nullable(),
+  /** The interested teams he'd help most, up to 5. */
+  rivals: z.array(
+    z.object({
+      teamId: z.number().int(),
+      team: z.string(),
+      /** What he'd add to their best lineups over the weeks left, byes counted. */
+      gain: z.number(),
+      /** Null in priority leagues. */
+      faabRemaining: z.number().nullable(),
+      waiverRank: z.number().int().nullable(),
+      history: BidProfile,
+    }),
+  ),
+  /** FAAB leagues: a range from the market and the rivals; null in priority leagues. */
+  suggestedBid: z.object({ low: z.number(), high: z.number(), basis: z.string() }).nullable(),
+});
+export type BidCompetitionTarget = z.infer<typeof BidCompetitionTarget>;
+
+/** Likely competition and a bid range for waiver targets in one league. */
+export const BidCompetition = z.object({
+  league: z.string(),
+  week: z.number().int(),
+  usesFaab: z.boolean(),
+  budget: z.number().nullable(),
+  minimumBid: z.number().nullable(),
+  myFaab: z.number().nullable(),
+  myWaiverRank: z.number().int().nullable(),
+  /** The weeks the gains cover: now through the league's last scoring week. */
+  weeks: z.object({ from: z.number().int(), to: z.number().int() }),
+  targets: z.array(BidCompetitionTarget),
+  /** Names that matched no player. */
+  notFound: z.array(z.string()),
+  asOf: z.string(),
+});
+export type BidCompetition = z.infer<typeof BidCompetition>;

@@ -69,6 +69,7 @@ If the team id is wrong, the error message lists every team in the league with i
 | `get_pending_claims` | your queued waiver claims: add, drop, bid and when they process |
 | `get_waiver_results` | how your claims fared in the latest waiver run: won, lost (to whom, for how much) or failed, and your waiver priority now |
 | `get_faab_prices` | what winning waiver bids cost in a league, by position, over recent weeks (default 5, up to the season): wins, how many were contested, median, low and high, and the top bids with the runner-up's losing bid. Counts only in priority leagues |
+| `get_bid_competition` | for waiver targets: what each would add to your lineups and to each rival's (byes counted), the rivals' FAAB left and bidding history, what similar players went for in this league, and a suggested bid range |
 | `set_league_rule` | saves a rule you confirmed to `leagues.json` (never writes to ESPN) |
 
 `league` takes the alias from `leagues.json`. Every tool returns structured JSON plus the same JSON as text.

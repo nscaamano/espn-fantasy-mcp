@@ -5,6 +5,7 @@
 
 import { readFileSync } from "node:fs";
 import {
+  BidCompetition,
   ByeCoverage,
   FaabPrices,
   FreeAgent,
@@ -37,7 +38,7 @@ const { version } = JSON.parse(
 
 export const POSITIONS = ["QB", "RB", "WR", "TE", "FLEX", "OP", "D/ST", "K"] as const;
 
-const INSTRUCTIONS = `Read-only access to the user's ESPN fantasy football leagues. Start with list_leagues for the league aliases. Leagues can have different rules (PPR vs half-PPR, FAAB vs priority waivers, superflex), so call get_league_settings before advising on a league, and never carry one league's rules over to another. If its missingRules or conflicts are non-empty, ask the user and save the answer with set_league_rule. Before recommending waiver claims, call get_pending_claims to see what the user already has queued, so you don't repeat a claim or plan a drop that's already committed. For a named player ("who has X", "is X available", "how's X doing"), use get_player rather than scanning rosters. Lineup risks and get_player results carry the player's latest ESPN news blurb (\`news\`); for anyone else, or more history, call get_player_news before searching the web. To plan ahead, get_bye_coverage shows the weeks the roster can't fill; for FAAB bids, get_faab_prices shows what this league pays by position; for trades, find_trade_partners shortlists partners in one call instead of reading every roster. This server can't make moves: recommend lineup changes, claims, bids and drops for the user to make in the ESPN app.`;
+const INSTRUCTIONS = `Read-only access to the user's ESPN fantasy football leagues. Start with list_leagues for the league aliases. Leagues can have different rules (PPR vs half-PPR, FAAB vs priority waivers, superflex), so call get_league_settings before advising on a league, and never carry one league's rules over to another. If its missingRules or conflicts are non-empty, ask the user and save the answer with set_league_rule. Before recommending waiver claims, call get_pending_claims to see what the user already has queued, so you don't repeat a claim or plan a drop that's already committed. For a named player ("who has X", "is X available", "how's X doing"), use get_player rather than scanning rosters. Lineup risks and get_player results carry the player's latest ESPN news blurb (\`news\`); for anyone else, or more history, call get_player_news before searching the web. To plan ahead, get_bye_coverage shows the weeks the roster can't fill; for FAAB bids, get_faab_prices shows what this league pays by position and get_bid_competition who else wants a target and what it may take; for trades, find_trade_partners shortlists partners in one call instead of reading every roster. This server can't make moves: recommend lineup changes, claims, bids and drops for the user to make in the ESPN app.`;
 
 const league = z
   .string()
@@ -431,6 +432,26 @@ export function createServer(
       annotations: READ,
     },
     async (args) => result(await service().getFaabPrices(args.league, args.weeks, args.position)),
+  );
+
+  server.registerTool(
+    "get_bid_competition",
+    {
+      title: "Waiver bid competition",
+      description:
+        "Who else is likely to claim waiver targets in one league, and roughly what it will take, so a FAAB bid can beat the likely second-highest one. Per target: `gainForMe`, what he'd add to the user's best lineups over the weeks left (each week's lineup without the players on bye, valued by ESPN's rest-of-season projection per game, in season points); `rivals`, the other teams he'd help most (`gain` on the same scale, at least 5% of his projection), each with `faabRemaining`, waiver rank and `history` (claims that won or were outbid this season, FAAB spent, highest bid overall and at his position, last week with a claim); `interested` (how many teams he'd help enough) and `aheadOfMe` (how many of those are ahead of the user in waiver priority); `market`, what winning claims cost at his position this season (league-wide when the position has fewer than 2 wins: median, contested median, max, and `topRunnerUp`, the highest losing bid seen); `comparables`, the latest wins at his position; and `suggestedBid`, a range by a simple rule: the minimum bid with no rival that has budget; median to contested median with one; above `topRunnerUp`, up to the position's max, with two or more; capped at one more than the richest rival can bid and at the user's budget. In a priority league there are no bids: `suggestedBid` is null, and `aheadOfMe` says whether a claim can win. Limits: other teams' queued claims aren't visible before the run, a season is a small sample, and the gains miss news the projection hasn't caught up with (a new starter's projection can trail his role), so use it as tendencies and a range, then judge from the news. A rostered player comes back with `available: false`. Reads every roster and the season's transaction log (cached), so ask for all targets in one call.",
+      inputSchema: z.object({
+        league,
+        players: z
+          .array(z.string().trim().min(2))
+          .min(1)
+          .max(5)
+          .describe('Waiver targets by name, full or partial, e.g. ["Gardner Minshew"] (1–5).'),
+      }),
+      outputSchema: BidCompetition,
+      annotations: READ,
+    },
+    async (args) => result(await service().getBidCompetition(args.league, args.players)),
   );
 
   server.registerTool(

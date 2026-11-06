@@ -68,6 +68,12 @@ ESPN's projections and % rostered are inputs from one model and from the crowd. 
   - how much he matters to the lineup;
   - how scarce the position is;
   - what this league pays at his position (`get_faab_prices`). Anchor on the position's median and on comparable players in its `bids`. For a player several teams will want, `runnerUp` shows what it took to win a contested claim: beat that, not just the median.
+- **Size up the competition** with `get_bid_competition`, one call per league with every target you'd bid on:
+  - `gainForMe` is what he'd add to the user's lineups over the weeks left, byes counted. Near 0 means he doesn't help: pass, or bid the minimum as a stash.
+  - `rivals` are the teams he'd help most, with their `gain`, `faabRemaining` and `history`. A big gain plus a big budget is the team to beat. A rival who has never claimed anyone (`history.claims` 0) may not bid at all, and one with little budget can't go high.
+  - `suggestedBid` is a starting range priced against wins on similar players in this league. Go above `high` only for a reason the numbers miss, and say it: a new starter whose projection hasn't caught up with his role, or several rivals with big gains and budgets. Below `low`, expect to lose a contested claim.
+  - In a priority league, `aheadOfMe` says how many interested teams are ahead of the user in waiver order: if it's 0, a claim wins.
+  - It can't see other teams' queued claims, so it's tendencies, not a prediction. Say so when a bid is close.
 - Read the prices with care: a few claims per position is a small sample, a winning bid is what one manager paid rather than what was needed (an uncontested $20 win could have been $1), and a breakout bid (the top `max`) isn't the going rate.
 - Don't bid big on a speculative add (single-digit % rostered). The minimum bid, or $0 where `minimumBid` is 0, is often enough.
 - Save budget for real breakouts, such as the new lead back after a starter's season-ending injury. Those deserve a large share of what's left.
@@ -76,6 +82,7 @@ ESPN's projections and % rostered are inputs from one model and from the crowd. 
 
 **Priority leagues:**
 - Rank the claims in the order the user should enter them.
+- Use `get_bid_competition`'s `aheadOfMe`: with 0 interested teams ahead, the claim wins wherever it sits.
 - Say whether the claim is worth using a high waiver spot. If priority resets weekly (`priorityResets: true`), using it costs little. If it rolls over, save it for difference-makers.
 
 ## 6. A drop for every claim
@@ -100,7 +107,7 @@ Give one block per league, with times in the user's time zone (Eastern if unknow
 Already queued: X ($5), dropping Y.
 Holes: RB2 (Z on bye in week 8), QB depth (W on bye in week 10).
 Claims, in this order:
-1. Add A (RB, HOU), bid $14, drop B. Starting job after C's injury (source, date). RBs here: median $10, contested ones $18–30.
+1. Add A (RB, HOU), bid $21, drop B. Starting job after C's injury (source, date). Two teams need an RB; the strongest has $77 left. Backs like him went for $10–18 here, so $21 to beat a contested claim.
 2. Add D (QB, NO), bid $3, drop E. Covers the week 10 bye.
 Add now (free agent): F (K) for G.
 Passed on: H. Hyped, but 2% rostered and no role yet.

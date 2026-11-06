@@ -84,23 +84,24 @@ const tradePlayer = (p: Player): TradePlayer => ({
   seasonProjectedPoints: p.seasonProjectedPoints,
 });
 
-/** The best lineup by season projection: its total and who starts. */
+/** The best lineup by season projection (or by `worth`): its total and who starts. */
 export function bestSeasonLineup(
   players: readonly Player[],
   slots: readonly string[],
+  worth: (p: Player) => number = value,
 ): { total: number; starters: Set<number> } {
   const starters = new Set<number>();
   if (!slots.length || !players.length) return { total: 0, starters };
   // Rows: slots. Columns: players, then one "leave empty" per slot.
   const cost = slots.map((slot) => [
-    ...players.map((p) => (p.eligibleSlots.includes(slot) ? -value(p) : INELIGIBLE)),
+    ...players.map((p) => (p.eligibleSlots.includes(slot) ? -worth(p) : INELIGIBLE)),
     ...slots.map(() => 0),
   ]);
   let total = 0;
   assign(cost).forEach((col, row) => {
     const p = players[col];
     if (p && cost[row]![col]! < INELIGIBLE) {
-      total += value(p);
+      total += worth(p);
       starters.add(p.id);
     }
   });

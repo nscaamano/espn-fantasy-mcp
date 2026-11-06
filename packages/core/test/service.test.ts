@@ -387,6 +387,42 @@ describe("FantasyService.getFaabPrices", () => {
   });
 });
 
+describe("FantasyService.getBidCompetition", () => {
+  it("reads every roster and the season's logs, and sizes up each target", async () => {
+    const { svc, calls } = service(2);
+    const out = await svc.getBidCompetition("test", ["AJ Tester", "Antonio Brown", "Nobody Atall"]);
+    expect(out).toMatchObject({
+      league: "test",
+      week: 16,
+      usesFaab: false,
+      myFaab: null,
+      myWaiverRank: 5,
+      notFound: ["Nobody Atall"],
+    });
+    expect(out.weeks.from).toBe(16);
+    const [tester, brown] = out.targets;
+    expect(tester).toMatchObject({
+      query: "AJ Tester",
+      player: { name: "A.J. Tester", status: "WAIVERS" },
+      available: true,
+      // A priority league: who's ahead matters, not a bid.
+      suggestedBid: null,
+    });
+    expect(tester!.market?.median).toBeNull();
+    expect(brown).toMatchObject({
+      player: { name: "Antonio Brown" },
+      available: false,
+      rivals: [],
+    });
+    const rosterReads = calls.filter((c) => c.url.searchParams.has("forTeamId"));
+    expect(rosterReads).toHaveLength(10);
+    const logWeeks = calls
+      .filter((c) => c.url.searchParams.getAll("view").includes("mTransactions2"))
+      .map((c) => Number(c.url.searchParams.get("scoringPeriodId")));
+    expect(logWeeks).toEqual(Array.from({ length: 16 }, (_, i) => i + 1));
+  });
+});
+
 describe("FantasyService.getPendingClaims", () => {
   it("returns my queued claims with ISO times and no bid in a priority league", async () => {
     const claims = await service(1).svc.getPendingClaims("test");

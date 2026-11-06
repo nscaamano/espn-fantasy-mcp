@@ -6,6 +6,7 @@ import {
   EspnClient,
   type EspnLeagueSettings,
   type EspnNewsItem,
+  type EspnPlayer,
   type EspnTransaction,
 } from "@nscaamano/espn-fantasy-client";
 import { z } from "zod";
@@ -22,6 +23,7 @@ import {
   splitLineup,
   toFreeAgent,
   toLeagueSettings,
+  toPlayer,
   toPlayerInfo,
   lockAtKickoff,
   toPendingClaim,
@@ -29,12 +31,14 @@ import {
   toWaiverResults,
   type ProSchedule,
 } from "./map.js";
-import { byeCoverage } from "./byes.js";
+import { bidCompetition, claimBids, perGame, playable, restOfSeasonValue } from "./bids.js";
+import { byeCoverage, slotList } from "./byes.js";
 import { faabPrices, winningClaims, type WeekLog } from "./faab.js";
 import { DEFAULT_IR_ELIGIBLE, optimizeLineup } from "./lineup.js";
 import { findTradePartners } from "./partners.js";
 import { applyRules } from "./rules.js";
 import {
+  BidCompetition,
   ByeCoverage,
   FaabPrices,
   FreeAgent,
@@ -89,6 +93,14 @@ const toNewsItem = (n: EspnNewsItem): NewsItem => ({
   story: n.story,
   published: n.published,
 });
+
+/** The league's last scoring period: ESPN's final one, else the schedule's latest week. */
+function lastScoringWeek(raw: EspnLeagueSettings): number {
+  return (
+    raw.finalScoringPeriod ??
+    Math.max(raw.currentWeek, ...Object.values(raw.schedule.matchupPeriods).flat())
+  );
+}
 
 export class FantasyService {
   /** Per player id; same lifetime as settings. */
@@ -260,9 +272,7 @@ export class FantasyService {
       this.espnSettings(cfg),
       this.getMyRoster(league),
     ]);
-    const lastWeek =
-      raw.finalScoringPeriod ??
-      Math.max(settings.currentWeek, ...Object.values(raw.schedule.matchupPeriods).flat());
+    const lastWeek = lastScoringWeek(raw);
     const from = fromWeek ?? settings.currentWeek;
     const to = Math.min(toWeek ?? from + BYE_WEEKS_AHEAD - 1, lastWeek);
     if (from > lastWeek) {
@@ -564,18 +574,7 @@ export class FantasyService {
     ]);
     const toWeek = settings.currentWeek;
     const fromWeek = Math.max(1, toWeek - Math.max(1, weeks) + 1);
-    const logs: WeekLog[] = [];
-    for (let start = fromWeek; start <= toWeek; start += LOG_CONCURRENCY) {
-      const batch = Array.from(
-        { length: Math.min(LOG_CONCURRENCY, toWeek - start + 1) },
-        (_, i) => start + i,
-      );
-      logs.push(
-        ...(await Promise.all(
-          batch.map(async (week) => ({ week, transactions: await this.log(cfg, week, toWeek) })),
-        )),
-      );
-    }
+    const logs = await this.logs(cfg, fromWeek, toWeek);
     const usesFaab = raw.acquisition.usesFaab;
     return FaabPrices.parse({
       league: cfg.alias,
@@ -590,6 +589,129 @@ export class FantasyService {
         bidsPerPosition: position ? FAAB_BIDS_ONE_POSITION : FAAB_BIDS,
         teamName: (id) => this.teamName(raw, id),
       }),
+      asOf: this.now().toISOString(),
+    });
+  }
+
+  /**
+   * Who might bid on waiver targets, and roughly how much. Per target: what he'd
+   * add to each team's best lineups over the weeks left (byes counted), the
+   * rivals he'd help with their budget and bidding this season, the league's
+   * market at his position, and a bid range. Reads every roster and the
+   * season's transaction logs (past weeks cached). Other teams' queued claims
+   * aren't visible, so it's tendencies, not a prediction.
+   */
+  async getBidCompetition(league: string, names: string[]): Promise<BidCompetition> {
+    const cfg = findLeague(this.config, league);
+    const [settings, raw, schedule] = await Promise.all([
+      this.getLeagueSettings(league),
+      this.espnSettings(cfg),
+      this.proSchedule(cfg.year),
+    ]);
+    const w = settings.currentWeek;
+    const queries = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+    const [rosters, logs, found] = await Promise.all([
+      Promise.all(settings.teams.map((t) => this.getTeamRoster(cfg.alias, t.id, w))),
+      this.logs(cfg, 1, w),
+      Promise.all(
+        queries.map(async (query) => ({
+          query,
+          top: (await this.client.searchPlayers(cfg.leagueId, cfg.year, query, w))[0],
+        })),
+      ),
+    ]);
+    const usesFaab = raw.acquisition.usesFaab;
+    const last = lastScoringWeek(raw);
+    const weeks = Array.from({ length: Math.max(0, last - w + 1) }, (_, i) => w + i);
+    const slots = slotList(settings.roster.slots);
+    const base = new Map(
+      rosters.map((r) => [r.teamId, restOfSeasonValue(playable(r), slots, weeks)] as const),
+    );
+    const bids = claimBids(logs);
+    const wins = winningClaims(logs);
+    const me = settings.teams.find((t) => t.id === cfg.myTeamId);
+    // Each won player's value now, to price targets against similar players.
+    const cards = await this.client
+      .getPlayers(cfg.leagueId, cfg.year, [...new Set(wins.map((x) => x.playerId))])
+      .catch(() => new Map<number, EspnPlayer>());
+    const values = new Map(
+      [...cards.values()].map((p) => [p.id, perGame(toPlayer(p, schedule, w), weeks)] as const),
+    );
+
+    const targets = found.flatMap(({ query, top }) => {
+      if (!top) return [];
+      const team =
+        top.onTeamId === null
+          ? null
+          : {
+              id: top.onTeamId,
+              name: this.teamName(raw, top.onTeamId),
+              slot: null,
+              isMine: top.onTeamId === cfg.myTeamId,
+            };
+      const info = toPlayerInfo(top, schedule, w, team);
+      const player = {
+        id: info.id,
+        name: info.name,
+        position: info.position,
+        proTeam: info.proTeam,
+        injuryStatus: info.injuryStatus,
+        byeWeek: info.byeWeek,
+        status: info.status,
+        seasonProjectedPoints: info.seasonProjectedPoints,
+        percentRostered: info.percentRostered,
+        percentChange: info.percentChange,
+        waiverClears: info.waiverClears,
+      };
+      if (info.status === "ROSTERED") {
+        return [
+          {
+            query,
+            player,
+            available: false,
+            perGame: null,
+            gainForMe: null,
+            market: null,
+            comparables: [],
+            interested: 0,
+            aheadOfMe: null,
+            rivals: [],
+            suggestedBid: null,
+          },
+        ];
+      }
+      return [
+        {
+          query,
+          player,
+          ...bidCompetition({
+            target: info,
+            rosters,
+            teams: settings.teams,
+            myTeamId: cfg.myTeamId,
+            slots,
+            weeks,
+            bids,
+            wins,
+            usesFaab,
+            minimumBid: settings.waivers.minimumBid ?? 1,
+            base,
+            values,
+          }),
+        },
+      ];
+    });
+    return BidCompetition.parse({
+      league: cfg.alias,
+      week: w,
+      usesFaab,
+      budget: usesFaab ? settings.waivers.faabBudget : null,
+      minimumBid: usesFaab ? settings.waivers.minimumBid : null,
+      myFaab: usesFaab ? (me?.faabRemaining ?? null) : null,
+      myWaiverRank: me?.waiverRank ?? null,
+      weeks: { from: w, to: Math.max(w, last) },
+      targets,
+      notFound: found.filter((f) => !f.top).map((f) => f.query),
       asOf: this.now().toISOString(),
     });
   }
@@ -632,6 +754,23 @@ export class FantasyService {
     value.catch(() => this.settingsCache.delete(key));
     this.settingsCache.set(key, { at, value });
     return value;
+  }
+
+  /** Transaction logs for weeks `fromWeek`..`toWeek` (the current week), a few at a time. */
+  private async logs(cfg: LeagueConfig, fromWeek: number, toWeek: number): Promise<WeekLog[]> {
+    const logs: WeekLog[] = [];
+    for (let start = fromWeek; start <= toWeek; start += LOG_CONCURRENCY) {
+      const batch = Array.from(
+        { length: Math.min(LOG_CONCURRENCY, toWeek - start + 1) },
+        (_, i) => start + i,
+      );
+      logs.push(
+        ...(await Promise.all(
+          batch.map(async (week) => ({ week, transactions: await this.log(cfg, week, toWeek) })),
+        )),
+      );
+    }
+    return logs;
   }
 
   /** One week's transaction log. Weeks before `currentWeek` are over, so they're cached for good. */

@@ -22,7 +22,10 @@ export interface EspnPlayer {
   percentChange: number | null;
   /** Fantasy points for the requested scoring period. */
   week: { actual: number | null; projected: number | null };
-  /** Fantasy points for the whole season. */
+  /**
+   * Fantasy points for the season. During the season ESPN's projection covers
+   * the games left (checked live), so it's a rest-of-season figure.
+   */
   season: { actual: number | null; projected: number | null };
 }
 
